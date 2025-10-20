@@ -88,13 +88,9 @@ const ReportScreen = ( {navigation} ) => {
 	return (
 		<View style={styles.container}>
 			<View style={{flexDirection: 'row', paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#adbcb1',}}>
-				<Image
-					style={{ width: 35, height: 35, marginRight: 5, tintColor: '#ffffff'}}
-					source={require('../assets/Icons/title.png')}
-				/>
-				<Text style={{fontWeight: 'bold',fontSize: 35, color: '#ffffff'}}>Pelaporan</Text>
+				<Text style={{fontWeight: 'bold',fontSize: 32, color: '#ffffff'}}>Laporan Kejadian</Text>
 			</View>
-			<Text style={styles.welcomeText}>Daftar Pelaporan</Text>
+			<Text style={styles.welcomeText}>Daftar Laporan</Text>
 			<SafeAreaView style={styles.newsListContainer}>
 				<FlatList
 					data={reports}
@@ -109,7 +105,7 @@ const ReportScreen = ( {navigation} ) => {
 				style={styles.buttonContainer}
 				onPress={() => navigation.navigate('ReportFormStep1')}
 			>
-				<Text style={styles.buttonText}>TAMBAH PELAPORAN</Text>
+				<Text style={styles.buttonText}>TAMBAH LAPORAN</Text>
 			</TouchableOpacity>
 		</View>
 	);
@@ -139,7 +135,7 @@ const styles = StyleSheet.create({
 	newsListContainer: {
 		flex: 1,
 		borderRadius: 3,
-		backgroundColor: '#ffffff',
+		backgroundColor: '#ffffffcc',
 		marginTop: 10,
 		marginBottom: 10,
 	},

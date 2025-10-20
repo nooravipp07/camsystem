@@ -1,280 +1,315 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, Image, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ImageBackground } from 'react-native';
+import {
+	View,
+	Text,
+	Image,
+	StyleSheet,
+	SafeAreaView,
+	TouchableOpacity,
+	ImageBackground,
+	ScrollView,
+} from 'react-native';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
 import moment from 'moment';
+import { AuthContext } from '../context/AuthContext';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 
 const HomeScreen = ({ navigation }) => {
-	const { userInfo } = useContext(AuthContext);
-	const { token } = useContext(AuthContext);
-	const [reports, setReports] = useState(null);
-	const [news, setNews] = useState(null);
-
+	const { userInfo, token } = useContext(AuthContext);
 	const user = JSON.parse(userInfo);
+
+	const [reports, setReports] = useState([]);
+	const [news, setNews] = useState([]);
 
 	useEffect(() => {
 		const interval = setInterval(() => {
-			getNews();
-			getReports();
-		}, 10000);	
-		console.log(user);
-		getNews();
-		getReports();
-		
-		return() => {
-			clearInterval(interval);
-		}
+			fetchNews();
+			fetchReports();
+		}, 10000);
 
+		fetchNews();
+		fetchReports();
+
+		return () => clearInterval(interval);
 	}, []);
 
-	const getReports = async () => {
+	const fetchReports = async () => {
 		try {
-			const response = await axios.get(`${BASE_URL}/reports?perPage=2&page=1&search=&orderBy=created_at&sortBy=desc`, {
-				headers: {
-					Authorization: `Bearer ${JSON.parse(token)}`,
-				},
-			});
+			const { data } = await axios.get(
+				`${BASE_URL}/reports?perPage=2&page=1&orderBy=created_at&sortBy=desc`,
+				{
+					headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+				}
+			);
+			setReports(data.response.data || []);
+		} catch (err) {
+			console.error('Failed to fetch reports:', err);
+		}
+	};
 
-			if(response){
-				setReports(response.data.response.data);
-			}else{
-				console.log('gagal fetch data')
-			}
-		} catch (error) {
-			console.error(error);
-		}				
-	}
-
-	const getNews = async () => {
+	const fetchNews = async () => {
 		try {
-			const response = await axios.get(`${BASE_URL}/news?perPage=2&page=1&search=&orderBy=date&sortBy=desc`, {
-				headers: {
-					Authorization: `Bearer ${JSON.parse(token)}`,
-				},
-			});
-
-			if(response){
-				setNews(response.data.response.data);
-			}else{
-				console.log('gagal fetch data')
-			}
-		} catch (error) {
-			console.error(error);
-		}				
-	}
+			const { data } = await axios.get(
+				`${BASE_URL}/news?perPage=2&page=1&orderBy=date&sortBy=desc`,
+				{
+					headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+				}
+			);
+			setNews(data.response.data || []);
+		} catch (err) {
+			console.error('Failed to fetch news:', err);
+		}
+	};
 
 	return (
-		// <ScrollView>
-			<ImageBackground 
-				style={styles.imgBackground}
-				source={ require('../assets/Images/bg.png') }
-			>
-			<View style={{flexDirection: 'row', paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#adbcb1',}}>
-				<Image
-					style={{ width: 35, height: 35, marginRight: 5, tintColor: '#ffffff'}}
-					source={require('../assets/Icons/title.png')}
-				/>
-				<Text style={{fontWeight: 'bold',fontSize: 35, color: '#ffffff'}}>Dashboard</Text>
-			</View>
-			<Text style={styles.welcomeText}>Selamat Datang</Text>
+		<ImageBackground
+			source={require('../assets/Images/bg.png')}
+			style={styles.imgBackground}
+		>
+			<ScrollView showsVerticalScrollIndicator={false}>
+				{/* Header */}
+				<View style={styles.headerContainer}>
+					<Text style={styles.headerTitle}>Dashboard</Text>
+				</View>
+
+				{/* Welcome + Profile */}
+				<Text style={styles.welcomeText}>Selamat Datang</Text>
 				<View style={styles.profileContainer}>
-					<TouchableOpacity 
-						onPress={ () => {
-							navigation.navigate('Profile');
-						}}
-					>
-						{user? 
-							<Image
-								style={styles.profileImage}
-								source={{ uri: `${BASE_IMG_URL}${user.avatar}` }}
-							/>
-							:
-							<Image
-								style={styles.profileImage}
-								source={require('../assets/Icons/kamera.png')}
-							/>
-						}
+					<TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+						<Image
+							style={styles.profileImage}
+							source={
+								user?.avatar
+									? { uri: `${BASE_IMG_URL}${user.avatar}` }
+									: require('../assets/Icons/kamera.png')
+							}
+						/>
 					</TouchableOpacity>
-					<View style={styles.profileName}>
-						<Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 25 }}>{ user ? user.name : '' }</Text>
-						<Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 15 }}>Kodam { user ? user.kodam_name : '' }</Text>
-						<Text style={{ color: '#00aeef', fontSize: 15 }}>{user ? user.regency_name : '' }</Text>
+					<View style={styles.profileInfo}>
+						<Text style={styles.profileName}>{user?.name}</Text>
+						<Text style={styles.profileSub}>{user?.kodam_name}</Text>
+						<Text style={styles.profileLocation}>{user?.regency_name}</Text>
 					</View>
 				</View>
-				<SafeAreaView style={styles.newsListContainer}>
-				<View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#00aeef', padding: 8, borderTopRightRadius: 3, borderTopLeftRadius: 3 }}>
-						<Text style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff' }}>BULETIN BERITA</Text>
-						<TouchableOpacity
-							onPress={() => navigation.navigate('Buletin Berita')}
-						>
-							<Text style={{ fontSize: 17, color: '#ffffff'  }}>Lihat Semua </Text>
-						</TouchableOpacity>
-					</View>
-					{
-						news?.map((val, index) => {
-							return (
-								<View style={styles.newsContainer} key={index}>
-									{/* {val.thumbnail !== null ? 
-										<Image
-											style={styles.newsImage}
-											source={{ uri: `${BASE_IMG_URL}/${val.thumbnail}` }}
-										/>
-										:
-										<Image
-											style={styles.newsImage}
-											source={require('../assets/Icons/kamera.png')}
-										/>
-									} */}
-									<View style={{ flex:3, flexDirection: 'column' }}>
-										<View style={styles.newsDescription}>
-											<Text style={{ flex: 1, color: '#a7a9ac' }}>{moment(val.date, 'YYYY-MM-DD').format('DD MMMM YYYY')}</Text>
-												<Text style={{ color: '#00aeef'}}>Oleh: Admin</Text>
-											</View>
-											<View style={styles.newsTitle}>
-												<Text style={{ flex: 1, color: '#58595b', fontWeight: 'bold', textAlign: 'left' }}>{val.title}</Text>
-											</View>
-									</View>
+
+				{/* Menu Grid */}
+				<View style={styles.menuGrid}>
+					<MenuButton
+						label="Lap. Kerawanan"
+						icon={require('../assets/Icons/pelaporan.png')}
+						onPress={() => navigation.navigate('Pelaporan')}
+					/>
+					<MenuButton
+						label="Lap. Progres SPPG"
+						icon={require('../assets/Icons/pelaporan.png')}
+						onPress={() => navigation.navigate('Construction Report')}
+					/>
+					<MenuButton
+						label="Lap. Kejadian"
+						icon={require('../assets/Icons/pelaporan.png')}
+						onPress={() => navigation.navigate('Pelaporan')}
+					/>
+					<MenuButton
+						label="Lap. Harian"
+						icon={require('../assets/Icons/pelaporan.png')}
+						onPress={() => navigation.navigate('Pelaporan')}
+					/>
+					<MenuButton
+						label="Lap. Lain - lain"
+						icon={require('../assets/Icons/pelaporan.png')}
+						onPress={() => navigation.navigate('Pelaporan')}
+					/>
+				</View>
+
+				{/* News Section */}
+				<DataSection
+					title="Buletin Berita"
+					data={news}
+					onPress={() => navigation.navigate('Buletin Berita')}
+					renderItem={(val) => (
+						<View style={styles.itemRow}>
+							<View style={{ flex: 3 }}>
+								<View style={styles.itemMeta}>
+									<Text style={styles.itemDate}>
+										{moment(val.date).format('DD MMM YYYY')}
+									</Text>
+									<Text style={styles.itemAuthor}>Oleh: Admin</Text>
 								</View>
-							)
-						})
-					}
-				</SafeAreaView>
-				<SafeAreaView style={styles.newsListContainer}>
-					<View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#00aeef', padding: 8, borderTopRightRadius: 3, borderTopLeftRadius: 3 }}>
-						<Text style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff' }}>PELAPORAN</Text>
-						<TouchableOpacity
-							onPress={() => navigation.navigate('Pelaporan')}
-						>
-							<Text style={{ fontSize: 17, color: '#ffffff'  }}>Lihat Semua </Text>
-						</TouchableOpacity>
-					</View>
-					{
-						reports?.map((val, index) => {
-							let imageFound = false;
-							return (
-								<View style={styles.newsContainer} key={index}>
-									{/* { 
-										val.photos.length !== 0 ? 
-										(val.photos.map((val, index) => {
-											if(!imageFound && val.extension_file !== 'application/pdf'){
-												imageFound = true;
-												return(
-													<Image
-														key={index}
-														style={styles.newsImage}
-														source={{ uri: `${BASE_IMG_URL}${val.file}` }}
-													/>
-												)
-											} else {
-												return null;
-											}
-										})) : 
-										(
-											<Image
-												style={styles.newsImage}
-												source={require('../assets/Icons/kamera.png')}
-											/>
-										)
-									} */}
-									<View style={{ flex:3, flexDirection: 'column' }}>
-										<View style={styles.newsDescription}>
-											<Text style={{ flex: 1, color: '#a7a9ac' }}>{moment(val.date, 'YYYY-MM-DD').format('DD MMMM YYYY')}</Text>
-												<Text style={{ color: '#00aeef'}}>{val.hour.substring(0, 5)}</Text>
-											</View>
-											<View style={styles.newsTitle}>
-												<Text style={{ flex: 1, color: '#58595b', fontWeight: 'bold', textAlign: 'left' }}>{val.desc.substring(0, 120)} ... </Text>
-											</View>
-									</View>
+								<Text style={styles.itemTitle} numberOfLines={2}>
+									{val.title}
+								</Text>
+							</View>
+						</View>
+					)}
+				/>
+
+				{/* Reports Section */}
+				<DataSection
+					title="Pelaporan"
+					data={reports}
+					onPress={() => navigation.navigate('Pelaporan')}
+					renderItem={(val) => (
+						<View style={styles.itemRow}>
+							<View style={{ flex: 3 }}>
+								<View style={styles.itemMeta}>
+									<Text style={styles.itemDate}>
+										{moment(val.date).format('DD MMM YYYY')}
+									</Text>
+									<Text style={styles.itemAuthor}>
+										{val.hour?.substring(0, 5)}
+									</Text>
 								</View>
-							)
-						})
-					}
-				</SafeAreaView>
-				</ImageBackground>
-		// </ScrollView>
-		
+								<Text style={styles.itemTitle} numberOfLines={2}>
+									{val.desc}
+								</Text>
+							</View>
+						</View>
+					)}
+				/>
+			</ScrollView>
+		</ImageBackground>
 	);
 };
 
+/* ---------- Sub Components ---------- */
+const MenuButton = ({ label, icon, onPress }) => (
+	<TouchableOpacity style={styles.menuItem} onPress={onPress}>
+		<Image source={icon} style={styles.menuIcon} />
+		<Text style={styles.menuLabel}>{label}</Text>
+	</TouchableOpacity>
+);
+
+const DataSection = ({ title, data, onPress, renderItem }) => (
+	<SafeAreaView style={styles.sectionContainer}>
+		<View style={styles.sectionHeader}>
+			<Text style={styles.sectionTitle}>{title}</Text>
+			<TouchableOpacity onPress={onPress}>
+				<Text style={styles.sectionMore}>Lihat Semua</Text>
+			</TouchableOpacity>
+		</View>
+		{data.map((item, idx) => (
+			<View key={idx}>{renderItem(item)}</View>
+		))}
+	</SafeAreaView>
+);
+
+/* ---------- Styles ---------- */
 const styles = StyleSheet.create({
 	imgBackground: {
-        flex: 1,
-		padding: 15,
-        resizeMode: 'over',
-		justifyContent: 'center'
-    },
-	container: {
 		flex: 1,
-		padding: 15,
-		backgroundColor: '#29352e'
+		padding: 16,
+		backgroundColor: '#0c1a13',
 	},
-	heading: {
-		fontWeight: 'bold',
-		fontSize: 35,
-		color: '#ffffff',
-		paddingBottom: 5,
+	headerContainer: {
 		borderBottomWidth: 1,
 		borderBottomColor: '#adbcb1',
+		paddingBottom: 6,
+		marginBottom: 10,
+	},
+	headerTitle: {
+		fontSize: 32,
+		fontWeight: 'bold',
+		color: '#fff',
 	},
 	welcomeText: {
-		fontWeight: 'bold',
-		fontSize: 25,
-		color: '#00aeef',
-		paddingTop: 10,
-		paddingBottom: 10,
+		fontSize: 22,
+		fontWeight: '600',
+		color: '#fff',
+		marginVertical: 10,
 	},
 	profileContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingBottom: 20,
-		marginBottom: 16,
+		paddingVertical: 10,
 		borderBottomWidth: 2,
-		borderBottomColor: '#00aeef',
+		borderBottomColor: '#2761a9',
+		marginBottom: 16,
 	},
 	profileImage: {
 		width: 70,
 		height: 70,
-		borderRadius: 5,
-		borderColor: '#00aeef',
+		borderRadius: 10,
+		borderColor: '#2761a9',
 		borderWidth: 2,
-		marginRight: 8,
+		marginRight: 12,
 	},
+	profileInfo: { flex: 1 },
 	profileName: {
-		paddingLeft: 7,
+		color: '#fff',
+		fontSize: 20,
+		fontWeight: 'bold',
 	},
-	newsListContainer: {
-		flex: 1,
-		borderRadius: 3,
-		backgroundColor: '#ffffff',
-		marginTop: 10,
-		marginBottom: 10,
+	profileSub: {
+		color: '#fff',
+		fontSize: 15,
 	},
-	newsContainer: {
-		flex: 1,
+	profileLocation: {
+		color: '#fff',
+		fontSize: 14,
+	},
+	menuGrid: {
 		flexDirection: 'row',
-		padding: 8,
-		borderTopWidth: 2,
-		borderTopColor: '#00aeef',
+		flexWrap: 'wrap',
+		justifyContent: 'flex-start', // biar baris terakhir item menempel kiri
+		columnGap: 18, // jarak horizontal antar kolom
+		rowGap: 10, // jarak vertikal antar baris
+		marginBottom: 16,
 	},
-	newsImage: {
-		flex: 1,
-		width: 70,
-		height: 70,
-		marginRight: 8,
+	menuItem: {
+		width: '30%', // 3 kolom
+		backgroundColor: '#ffffffcc',
+		borderRadius: 12,
+		alignItems: 'center',
+		paddingVertical: 15,
 	},
-	newsDescription: {
-		flexDirection: 'row', 
+	menuIcon: {
+		width: 45,
+		height: 45,
+		tintColor: '#2761a9',
+		marginBottom: 5,
+	},
+	menuLabel: {
+		fontSize: 13,
+		fontWeight: '600',
+		color: '#29352e',
+		textAlign: 'center',
+	},
+	sectionContainer: {
+		backgroundColor: '#fff',
+		borderRadius: 8,
+		marginBottom: 16,
+		overflow: 'hidden',
+	},
+	sectionHeader: {
+		flexDirection: 'row',
 		justifyContent: 'space-between',
-		paddingLeft: 7
+		backgroundColor: '#2761a9',
+		padding: 10,
 	},
-	newsTitle: {
+	sectionTitle: {
+		fontSize: 18,
+		fontWeight: 'bold',
+		color: '#fff',
+	},
+	sectionMore: {
+		fontSize: 16,
+		color: '#fff',
+		fontWeight: '500',
+	},
+	itemRow: {
 		flexDirection: 'row',
-		justifyContent: 'center',
-		paddingLeft: 7,
-		paddingTop: 5,
+		padding: 10,
+		borderTopWidth: 1,
+		borderColor: '#2761a933',
 	},
-
+	itemMeta: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		marginBottom: 4,
+	},
+	itemDate: { color: '#a7a9ac', fontSize: 13 },
+	itemAuthor: { color: '#2761a9', fontSize: 13 },
+	itemTitle: { color: '#333', fontWeight: '600', fontSize: 14 },
 });
 
 export default HomeScreen;

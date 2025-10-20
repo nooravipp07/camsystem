@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation}) => {
     return(
         <ImageBackground source={ require('../assets/Images/bg.png') } style={ styles.imgBackground }>
             <View style={styles.container}>
-                <Image style={styles.logo} source={ require('../assets/Images/cam-system-logo.png') }/>
+                <Image style={styles.logo} source={ require('../assets/Images/sintesa.png') }/>
                 <TextInput
                     style={styles.input}
                     placeholder='Username'
@@ -69,7 +69,7 @@ const LoginScreen = ({ navigation}) => {
                     value={password}
                 />
                 <TouchableOpacity onPress={togglePasswordVisibility}>
-                    <Text>{showPassword ? 'Hide Password' : 'Show Password'}</Text>
+                    <Text style={{ color: '#fff' }}>{showPassword ? 'Hide Password' : 'Show Password'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                     style={styles.buttonContainer} 
@@ -99,14 +99,14 @@ const styles = StyleSheet.create({
     },
     logo: {
         width: '100%', //320 for newest android version
-        height: 90,
+        height: 140,
         resizeMode: 'contain',
         marginBottom: 20,
     },
     input: {
         width: '100%',
         height: 50,
-        borderColor: '#0068a7',
+        borderColor: '#2761a9',
         borderWidth: 1,
         borderRadius: 4,
         marginBottom: 12,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
         color: 'white',
     },
     buttonContainer: {
-        backgroundColor: '#0068a7',
+        backgroundColor: '#2761a9',
         paddingVertical: 15,
         borderRadius: 2,
         width: '100%',
@@ -124,13 +124,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#ffffff',
         fontWeight: '700',
-    },
-    // logo: {
-    //     position: 'relative',
-    //     width: 270,
-    //     height: 90,
-    //     marginBottom: 30
-    // }
+    }
 });
 
 export default LoginScreen;

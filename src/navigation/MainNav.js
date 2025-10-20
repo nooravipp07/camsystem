@@ -14,6 +14,7 @@ import axios from 'axios';
 import { BASE_URL } from '../config/Config';
 import ProfileScreen from '../screen/profile/ProfileScreen';
 import {PERMISSIONS, RESULTS, check, request, requestMultiple, openSettings} from 'react-native-permissions';
+import ConstructionReportNav from './ConstructionReportNav';
 
 const Tab = createBottomTabNavigator();
 
@@ -259,47 +260,74 @@ function MainNav({navigation}) {
     };
 
     return (
-        <Tab.Navigator  
-                        screenOptions={({ route }) => ({
-                            tabBarHideOnKeyboard: true,
-                            initialRouteName: 'Dashboard',
-                            headerShown: false,
-                            tabBarStyle: { backgroundColor: '#122E5F', height: 70 },
-                            tabBarLabelStyle: { paddingBottom: 5 },
-                            tabBarActiveTintColor: '#ffffff',
-                            tabBarInactiveTintColor: '#00aeef',
-                            tabBarIcon: ({ focused, color, size }) => {
-                                let iconSource;
-                                if (route.name === 'Dashboard') {
-                                    iconSource = focused ? require('../assets/Icons/dashboard.png') : require('../assets/Icons/dashboard.png');
-                                } else if (route.name === 'Pelaporan') {
-                                    iconSource = focused ? require('../assets/Icons/pelaporan.png') : require('../assets/Icons/pelaporan.png');
-                                } else if (route.name === 'Buletin Berita') {
-                                    iconSource = focused ? require('../assets/Icons/buletin-berita.png') : require('../assets/Icons/buletin-berita.png');
-                                } else if (route.name === 'Chat') {
-                                    iconSource = focused ? require('../assets/Icons/chat.png') : require('../assets/Icons/chat.png');
-                                } else if (route.name === 'Chat SOS') {
-                                    iconSource = focused ? require('../assets/Icons/sos.png') : require('../assets/Icons/sos.png');
-                                } else if (route.name === 'Profile') {
-                                    iconSource = focused ? require('../assets/Icons/sos.png') : require('../assets/Icons/sos.png');
-                                }
-                    
-                                return <Image source={iconSource} style={{ width: size, height: size, tintColor: '#00aeef' }} />;
-                            },
-                        })}
-                    >
-                    <Tab.Screen name="Dashboard" component={HomeScreen}/>
-                    <Tab.Screen name="Pelaporan" component={PelaporanNav} />
-                    <Tab.Screen name="Buletin Berita" component={BuletinBeritaNav } />
-                    <Tab.Screen name="Chat" component={ChatNav} />
-                    <Tab.Screen name="Chat SOS" component={ChatSOSNav} />
-                    <Tab.Screen name="Profile" component={ProfileScreen} options={{
-                            tabBarButton: () => null,
-                            tabBarVisible: false,
-                        }} 
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                tabBarHideOnKeyboard: true,
+                initialRouteName: 'Dashboard',
+                headerShown: false,
+                tabBarStyle: { backgroundColor: '#122E5F', height: 70 },
+                tabBarLabelStyle: {
+                    fontSize: 12,
+                    marginTop: -5,       // kurangi jarak antara icon dan label
+                    paddingBottom: 5,
+                },
+                tabBarIconStyle: {
+                    marginTop: 5,        // atur posisi icon agar lebih dekat ke text
+                },
+                tabBarActiveTintColor: '#deb93f',     // aktif: emas
+                tabBarInactiveTintColor: '#ffffffcc', // tidak aktif: putih semi transparan
+
+                tabBarIcon: ({ focused, color, size }) => {
+                let iconSource;
+                if (route.name === 'Dashboard') {
+                    iconSource = require('../assets/Icons/dashboard.png');
+                } else if (route.name === 'Pelaporan') {
+                    iconSource = require('../assets/Icons/pelaporan.png');
+                } else if (route.name === 'Buletin Berita') {
+                    iconSource = require('../assets/Icons/buletin-berita.png');
+                } else if (route.name === 'Chat') {
+                    iconSource = require('../assets/Icons/chat.png');
+                } else if (route.name === 'Chat SOS') {
+                    iconSource = require('../assets/Icons/sos.png');
+                } else if (route.name === 'Profile') {
+                    iconSource = require('../assets/Icons/sos.png');
+                }
+
+                return (
+                    <Image
+                        source={iconSource}
+                        style={{
+                            width: size,
+                            height: size,
+                            tintColor: color, // gunakan warna aktif/tidak aktif dari props color
+                        }}
                     />
-    </Tab.Navigator>
-        
+                );
+                },
+            })}
+            >
+            <Tab.Screen name="Dashboard" component={HomeScreen} />
+            <Tab.Screen name="Pelaporan" component={PelaporanNav} />
+            <Tab.Screen name="Buletin Berita" component={BuletinBeritaNav} />
+            <Tab.Screen name="Chat" component={ChatNav} />
+            <Tab.Screen name="Chat SOS" component={ChatSOSNav} />
+            <Tab.Screen
+                name="Profile"
+                component={ProfileScreen}
+                options={{
+                    tabBarButton: () => null,
+                    tabBarVisible: false,
+                }}
+            />
+            <Tab.Screen
+                name="Construction Report"
+                component={ConstructionReportNav}
+                options={{
+                    tabBarButton: () => null,
+                    tabBarVisible: false,
+                }}
+            />
+        </Tab.Navigator>
     );
 }
 

@@ -2,9 +2,17 @@ import React, { useState, useContext } from 'react';
 import { View, Text, TextInput,StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView } from 'react-native';
 import { DataContext  } from '../context/DataContext';
 import { Dimensions } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
 const ReportFormStep2 = ( {navigation} ) => {
 	const { formData, updateFormData } = useContext(DataContext);
+
+	const [form, setForm] = useState({
+		uraian: '',
+		tindakan: '',
+		level: '',
+		yayasan: '',
+	});
 
 	const handleInputUraianKejadian = (value) => {
 		updateFormData({ desc: value });
@@ -28,6 +36,19 @@ const ReportFormStep2 = ( {navigation} ) => {
 		}
 	}
 
+	const handleChange = (key, value) => setForm({ ...form, [key]: value });
+
+	const levelList = [
+        'MINOR',
+        'MODERAT',
+        'SERIUS',
+        'KRITIS',
+    ];
+
+	const yayasanList = [
+        'Z1R5RR - YAYASAN PERJUANGAN UNTUK KESEJAHTERAAN RAKYAT'
+    ];
+
     return(
         <SafeAreaView style={styles.container}>
 			<View style={{flexDirection: 'row', paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#adbcb1',}}>
@@ -47,7 +68,7 @@ const ReportFormStep2 = ( {navigation} ) => {
 					multiline={true}
 					numberOfLines={4}
 				/>
-				<Text style={styles.inputLabel}>KETERANGAN / TINDAKAN</Text>
+				<Text style={styles.inputLabel}>TENTANG / TINDAKAN</Text>
 				<TextInput
 					style={styles.textArea}
 					value={formData.keterangan}
@@ -55,13 +76,26 @@ const ReportFormStep2 = ( {navigation} ) => {
 					multiline={true}
 					numberOfLines={4}
 				/>
-				<Text style={styles.inputLabel}>NILAI</Text>
-				<TextInput
-					style={styles.input}
-					value={formData.nilai}
-					keyboardType='numeric'
-					onChangeText={handleInputNilai}
-				/>
+				<Text style={styles.inputLabel}>LEVEL</Text>
+				<Picker
+					selectedValue={form.level}
+					onValueChange={(val) => handleChange('level', val)}
+				>
+						<Picker.Item label="Pilih Level..." value="" />
+						{levelList.map((item, index) => (
+							<Picker.Item key={index} label={item} value={item} />
+						))}
+				</Picker>
+				<Text style={styles.inputLabel}>YAYASAN</Text>
+				<Picker
+					selectedValue={form.yayasan}
+					onValueChange={(val) => handleChange('yayasan', val)}
+				>
+					<Picker.Item label="Pilih Yayasan..." value="" />
+					{yayasanList.map((item, index) => (
+					<Picker.Item key={index} label={item} value={item} />
+					))}
+				</Picker>
 			</ScrollView>
 			<View style={styles.buttonContainer}>
 				<TouchableOpacity
