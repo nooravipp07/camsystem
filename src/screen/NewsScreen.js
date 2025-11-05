@@ -1,169 +1,235 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, SafeAreaView, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+    View,
+    Text,
+    FlatList,
+    Image,
+    StyleSheet,
+    SafeAreaView,
+    TouchableOpacity,
+    RefreshControl,
+    ActivityIndicator,
+} from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import moment from 'moment';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 import { NewsContext } from '../context/NewsContext';
 
-const NewsScreen = ( {navigation} ) => {
-	const { token } = useContext(AuthContext);
-	const { news, setNews } = useContext(NewsContext);
-	const [ refreshing, setRefreshing]  = useState(false);
+const NewsScreen = ({ navigation }) => {
+    const { token } = useContext(AuthContext);
+    const { news, setNews } = useContext(NewsContext);
+    const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		const interval = setInterval(() => {
-			handleRefresh();
-		}, 20000);	
-		getNews();
+    useEffect(() => {
+        getNews();
+        const interval = setInterval(() => {
+            handleRefresh();
+        }, 20000);
+        return () => clearInterval(interval);
+    }, []);
 
-		console.log(news)
-		return() => {
-			clearInterval(interval);
-		}
-	}, []);
+    const getNews = async () => {
+        try {
+            const response = await axios.get(
+                `${BASE_URL}/news?perPage=10&page=1&search=&orderBy=date&sortBy=desc`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${JSON.parse(token)}`,
+                    },
+                }
+            );
 
-	const getNews = async () => {
-		try {
-			const response = await axios.get(`${BASE_URL}/news?perPage=10&page=1&search=&orderBy=date&sortBy=desc`, {
-				headers: {
-					Authorization: `Bearer ${JSON.parse(token)}`,
-				},
-			});
+            const data = response.data.response.data;
+            setNews(data || []);
+        } catch (error) {
+            console.error('Error fetching news:', error);
+        } finally {
+            setRefreshing(false);
+            setLoading(false);
+        }
+    };
 
-			const data = response.data.response.data;
-			if(response){
-				setNews(data);
-				setRefreshing(false);
+    const handleRefresh = () => {
+        if (refreshing) return;
+        setRefreshing(true);
+        getNews();
+    };
 
-			}else{
-				console.log('gagal fetch data')
-			}
-		} catch (error) {
-			console.error(error);
-		}
-	}
+    const renderItem = ({ item }) => (
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() =>
+                navigation.navigate('NewsDetailScreen', { newsId: item.id })
+            }
+        >
+            <View style={styles.imageContainer}>
+                {item.thumbnail ? (
+                    <Image
+                        style={styles.image}
+                        source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
+                    />
+                ) : (
+                    <Image
+                        style={styles.image}
+                        source={require('../assets/Icons/kamera.png')}
+                    />
+                )}
+            </View>
 
-	const handleRefresh = () => {
+            <View style={styles.textContainer}>
+                <View style={styles.rowBetween}>
+                    <Text style={styles.date}>
+                        {moment(item.date, 'YYYY-MM-DD').format('DD MMM YYYY')}
+                    </Text>
+                    <Text style={styles.author}>Admin</Text>
+                </View>
+                <Text style={styles.title} numberOfLines={2}>
+                    {item.title}
+                </Text>
+            </View>
+        </TouchableOpacity>
+    );
 
-		console.log('Refresh triggred !!')
-		if (refreshing) return;
-	  
-		setRefreshing(true);
-	  
-		getNews();
-		
-	 };
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#fff" size="large" />
+                <Text style={{ color: '#fff', marginTop: 10 }}>Memuat berita...</Text>
+            </View>
+        );
+    }
 
-	const Item = ({ id, title, date , hour, image}) => (
-		<TouchableOpacity 
-			style={styles.newsContainer}
-			onPress={() => navigation.navigate('NewsDetailScreen', {
-				newsId: id
-			})}
-		>
-			{image !== null ? 
-				<Image
-					style={styles.newsImage}
-					source={{ uri: `${BASE_IMG_URL}/${image}` }}
-				/>
-				:
-				<Image
-					style={styles.newsImage}
-					source={require('../assets/Icons/kamera.png')}
-				/>
-			}
-			<View style={{ flex:3, flexDirection: 'column' }}>
-				<View style={styles.newsDescription}>
-					<Text style={{ flex: 1, color: '#a7a9ac' }}>{moment(date, 'YYYY-MM-DD').format('DD MMMM YYYY')}</Text>
-					<Text style={{ color: '#00aeef'}}>Oleh : Admin</Text>
-				</View>
-				<View style={styles.newsTitle}>
-						<Text style={{ flex: 1, color: '#58595b', fontWeight: 'bold', textAlign: 'left' }}>{title}</Text>
-				</View>
-			</View>
-		</TouchableOpacity >
-	);
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Image
+                    style={styles.headerIcon}
+                    source={require('../assets/Icons/title.png')}
+                />
+                <Text style={styles.headerTitle}>Buletin Berita</Text>
+            </View>
 
-	return (
-		<View style={styles.container}>
-			<View style={{flexDirection: 'row', paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#adbcb1',}}>
-				<Image
-					style={{ width: 35, height: 35, marginRight: 5, tintColor: '#ffffff'}}
-					source={require('../assets/Icons/title.png')}
-				/>
-				<Text style={{fontWeight: 'bold',fontSize: 35, color: '#ffffff'}}>Buletin Berita</Text>
-			</View>
-			<Text style={styles.welcomeText}>Daftar Berita</Text>
-			<SafeAreaView style={styles.newsListContainer}>
-				<FlatList
-					data={news}
-					renderItem={({ item }) => <Item id={item.id} title={item.title} date={item.date} hour={item.hour} image={item.thumbnail} />}
-					keyExtractor={item => item.id}
-					refreshControl={
-						<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-					}
-				/>
-			</SafeAreaView>
-		</View>
-	);
+            <Text style={styles.subTitle}>Daftar Berita Terkini</Text>
+
+            <SafeAreaView style={styles.listContainer}>
+                <FlatList
+                    data={news}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            colors={['#0068A7']}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <Text style={styles.emptyText}>
+                            Belum ada berita untuk ditampilkan.
+                        </Text>
+                    }
+                />
+            </SafeAreaView>
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		padding: 15,
-		backgroundColor: '#122E5F'
-	},
-	heading: {
-		fontWeight: 'bold',
-		fontSize: 35,
-		color: '#ffffff',
-		paddingBottom: 5,
-		borderBottomWidth: 1,
-		borderBottomColor: '#adbcb1',
-	},
-	welcomeText: {
-		fontWeight: 'bold',
-		fontSize: 25,
-		color: '#ffffff',
-		paddingTop: 10,
-		paddingBottom: 10,
-	},
-	newsListContainer: {
-		flex: 1,
-		borderRadius: 3,
-		backgroundColor: '#ffffff',
-		marginTop: 10,
-		marginBottom: 10,
-	},
-	newsContainer: {
-		flex: 1,
-		flexDirection: 'row',
-		padding: 8,
-		borderTopWidth: 1,
-		borderTopColor: '#00aeef',
-		borderBottomWidth: 1,
-		borderBottomColor: '#00aeef',
-	},
-	newsImage: {
-		flex: 1,
-		width: 70,
-		height: 70,
-		marginRight: 8,
-	},
-	newsDescription: {
-		flexDirection: 'row', 
-		justifyContent: 'space-between',
-		paddingLeft: 7
-	},
-	newsTitle: {
-		flexDirection: 'row',
-		justifyContent: 'center',
-		paddingLeft: 7,
-		paddingTop: 5,
-	},
-
+    container: {
+        flex: 1,
+        padding: 15,
+        backgroundColor: '#122E5F',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: '#adbcb1',
+        paddingBottom: 5,
+    },
+    headerIcon: {
+        width: 35,
+        height: 35,
+        tintColor: '#ffffff',
+        marginRight: 8,
+    },
+    headerTitle: {
+        fontWeight: 'bold',
+        fontSize: 28,
+        color: '#ffffff',
+    },
+    subTitle: {
+        fontSize: 18,
+        color: '#ffffff',
+        fontWeight: '500',
+        marginTop: 10,
+        marginBottom: 15,
+    },
+    listContainer: {
+        flex: 1,
+    },
+    card: {
+        flexDirection: 'row',
+        backgroundColor: '#ffffffcc',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 12,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    imageContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        overflow: 'hidden',
+        marginRight: 10,
+    },
+    image: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    textContainer: {
+        flex: 1,
+        flexDirection: 'column',
+    },
+    rowBetween: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 5,
+    },
+    date: {
+        fontSize: 12,
+        color: '#6c757d',
+    },
+    author: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#00aeef',
+    },
+    title: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: '#fff',
+        fontStyle: 'italic',
+        marginTop: 20,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#122E5F',
+    },
 });
 
 export default NewsScreen;

@@ -1,346 +1,455 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
+    View,
+    Text,
+    TextInput,
+    Image,
+    TouchableOpacity,
+    StyleSheet,
+    ScrollView,
+    Modal,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
+import axios from "axios";
 import { Picker } from '@react-native-picker/picker';
 import SignatureCapture from 'react-native-signature-capture';
+import { useProgress } from "../../context/ProgressContext";
+import { AuthContext } from "../../context/AuthContext";
+import { BASE_URL } from '../../config/Config';
 
 const GeneralInformationForm = ({ navigation }) => {
-    const [form, setForm] = useState({
-        reportFrom: '',
-        reportTo: '',
-        description: '',
-        workDone: [], // multi-select
-        materials: [], // multi-select
-        tools: [], // multi-select
-        weather: '',
-        issues: '',
-        suggestion: '',
-        signerRole: '',
-        signerName: '',
-    });
+    const { updateProgressPayload, progressPayload } = useProgress();
+    const { token } = useContext(AuthContext);
 
-    const [signature, setSignature] = useState(null);
+    const [form, setForm] = useState(
+        progressPayload || {
+            headerForm: {
+                sppgId: "",
+                total_progress: "",
+                reportedBy: "",
+                reportedTo: "",
+                description: ""
+            },
+            generalInformation: {
+                tasksPerformed: [],
+                materialsUsed: [],
+                toolsUsed: [],
+                weatherCondition: "",
+                obstacles: "",
+                suggestions: "",
+                uploadedFiles: [],
+                signatureBase64Img: "",
+                signerPosition: "",
+                signerName: ""
+            }
+        }
+    );
+
+    const [loading, setLoading] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const signRef = useRef();
 
-    const handleChange = (key, value) => setForm({ ...form, [key]: value });
+    // ✅ helper untuk update state nested
+    const handleChange = (section, key, value) => {
+        const updatedForm = {
+            ...form,
+            [section]: { ...form[section], [key]: value },
+        };
+        setForm(updatedForm);
+        updateProgressPayload(section, updatedForm[section]);
+    };
 
-    // === Data Dropdown ===
-    const workDoneList = [
-        'PEKERJAAN PERSIAPAN, GALIAN DAN URUGAN',
-        'PEKERJAAN PONDASI, DINDING DAN BETON BERTULANG',
-        'PEKERJAAN KUSEN PINTU/JENDELA (LENGKAP AKSESORIS)',
-        'PEKERJAAN ATAP, PLAFOND DAN RANGKA',
-        'PEKERJAAN LANTAI',
-        'PEKERJAAN KAMAR MANDI & SANITAIR',
-        'PEKERJAAN PENGECATAN',
-        'PEKERJAAN INSTALASI LISTRIK & AIR',
-        'FIRE PROCTECTION',
-        'PENANGKAL PETIR',
-        'PEKERJAAN LAIN - LAIN',
-    ];
-
-    const materialList = [
-        'Semen',
-        'Pasir',
-        'Batu Split',
-        'Batu Bata / Batako',
-        'Besi Beton',
-        'Baja Ringan',
-        'Kayu / Triplek',
-        'Kusen Pintu / Jendela',
-        'Kaca',
-        'Cat',
-        'Pipa PVC',
-        'Keramik',
-        'Gypsum / Plafon',
-        'Kabel Listrik',
-        'Cat Besi / Kayu',
-        'Air Conditioner (AC) Unit',
-        'Atap Seng/ Genteng',
-        'Paku / Baut',
-    ];
-
-    const toolsList = [
-        'Roll Cat',
-        'Kuas Cat',
-        'Sekop',
-        'Cangkul',
-        'Mollen (Mixer Beton)',
-        'Gerinda',
-        'Bor Listrik',
-        'Tangga',
-        'Palu',
-        'Tang',
-        'Gergaji Besi / Kayu',
-        'Meteran',
-        'Ember',
-        'Troli / Dorongan',
-    ];
-
-    const weatherList = [
-        'Cerah',
-        'Mendung',
-        'Hujan Ringan',
-        'Hujan Sedang',
-        'Hujan Lebat',
-    ];
-
-    // helper untuk append ke array (hindari duplikat)
-    const appendToArrayField = (field, value) => {
+    // ✅ hanya simpan value (string) ke array
+    const appendToArrayField = (section, field, value) => {
         if (!value) return;
-        const current = Array.isArray(form[field]) ? form[field] : [];
+        const current = Array.isArray(form[section][field]) ? form[section][field] : [];
         if (!current.includes(value)) {
-        setForm({ ...form, [field]: [...current, value] });
+            const updatedForm = {
+                ...form,
+                [section]: { ...form[section], [field]: [...current, value] },
+            };
+            setForm(updatedForm);
+            updateProgressPayload(section, updatedForm[section]);
         }
     };
 
-    // helper remove
-    const removeFromArrayField = (field, value) => {
-        const current = Array.isArray(form[field]) ? form[field] : [];
-        setForm({ ...form, [field]: current.filter((i) => i !== value) });
+    // ✅ remove berdasarkan value string
+    const removeFromArrayField = (section, field, value) => {
+        const current = Array.isArray(form[section][field]) ? form[section][field] : [];
+        const updatedForm = {
+            ...form,
+            [section]: {
+                ...form[section],
+                [field]: current.filter((i) => i !== value),
+            },
+        };
+        setForm(updatedForm);
+        updateProgressPayload(section, updatedForm[section]);
     };
+
+    const handleSignatureSave = (result) => {
+        const updatedForm = {
+            ...form,
+            generalInformation: { ...form.generalInformation, signatureBase64Img: result.encoded }
+        };
+        setForm(updatedForm);
+        updateProgressPayload('generalInformation', updatedForm.generalInformation);
+    };
+
+    // === Confirm then Submit ===
+    const handleSubmit = () => {
+        setShowConfirm(true);
+    };
+
+    // === Actual Submit Handler ===
+    const submitData = async () => {
+        setShowConfirm(false);
+        setLoading(true);
+
+        try {
+            const payload = form;
+            const url = `${BASE_URL}/progres-sppg/insert`;
+            const response = await axios.post(url, payload, {
+                headers: {
+                    Authorization: `Bearer ${JSON.parse(token)}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                // ✅ clear context
+                updateProgressPayload('headerForm', {
+                    sppgId: "",
+                    total_progress: "",
+                    reportedBy: "",
+                    reportedTo: "",
+                    description: ""
+                });
+                updateProgressPayload('generalInformation', {
+                    tasksPerformed: [],
+                    materialsUsed: [],
+                    toolsUsed: [],
+                    weatherCondition: "",
+                    obstacles: "",
+                    suggestions: "",
+                    uploadedFiles: [],
+                    signatureBase64Img: "",
+                    signerPosition: "",
+                    signerName: ""
+                });
+
+                Alert.alert('Sukses', 'Data berhasil dikirim!', [
+                    { text: 'OK', onPress: () => navigation.navigate('ConstructionReport') }
+                ]);
+            } else {
+                Alert.alert('Gagal', 'Gagal mengirim data');
+            }
+        } catch (error) {
+            console.log('Error submit:', error.response || error.message);
+            Alert.alert('Error', 'Terjadi kesalahan saat mengirim data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // === Data lists ===
+    const materialList = [
+        { value: "semen", label: "Semen" },
+        { value: "pasir", label: "Pasir" },
+        { value: "batu_split", label: "Batu Split" },
+        { value: "batu_bata", label: "Batu Bata / Batako" },
+        { value: "besi_beton", label: "Besi Beton" },
+        { value: "baja_ringan", label: "Baja Ringan" },
+        { value: "kayu", label: "Kayu / Triplek" },
+        { value: "kusen", label: "Kusen Pintu / Jendela" },
+        { value: "kaca", label: "Kaca" },
+        { value: "cat", label: "Cat" },
+        { value: "pipa", label: "Pipa PVC" },
+        { value: "keramik", label: "Keramik" },
+        { value: "gypsum", label: "Gypsum / Plafon" },
+        { value: "kabel", label: "Kabel Listrik" },
+        { value: "cat_besi", label: "Cat Besi / Kayu" },
+        { value: "ac", label: "Air Conditioner (AC) Unit" },
+        { value: "atap", label: "Atap Seng / Genteng" },
+        { value: "paku", label: "Paku / Baut" }
+    ];
+
+    const toolsList = [
+        { value: "roll_cat", label: "Roll Cat" },
+        { value: "kuas_cat", label: "Kuas Cat" },
+        { value: "sekop", label: "Sekop" },
+        { value: "cangkul", label: "Cangkul" },
+        { value: "molen", label: "Molen (Mixer Beton)" },
+        { value: "gerinda", label: "Gerinda" },
+        { value: "bor", label: "Bor Listrik" },
+        { value: "tangga", label: "Tangga" },
+        { value: "palu", label: "Palu" },
+        { value: "tang", label: "Tang" },
+        { value: "gergaji", label: "Gergaji Besi/Kayu" },
+        { value: "waterpass", label: "Waterpass" },
+        { value: "meteran", label: "Meteran" },
+        { value: "ember", label: "Ember" },
+        { value: "troli", label: "Troli/Dorongan" }
+    ];
+
+    const weatherList = ['Cerah', 'Mendung', 'Hujan Ringan', 'Hujan Sedang', 'Hujan Lebat'];
+
+    // ✅ helper tampilkan label di list terpilih
+    const getLabel = (list, value) => list.find(item => item.value === value)?.label || value;
 
     return (
         <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-            <Text style={styles.title}>DATA UMUM</Text>
+            <ScrollView contentContainerStyle={styles.scroll}>
+                <Text style={styles.title}>DATA UMUM</Text>
 
-            {/* Report Dari */}
-            <Text style={styles.label}>Report Dari</Text>
-            <TextInput
-            style={styles.input}
-            placeholder="Kontraktor Pelaksana Dapur ..."
-            value={form.reportFrom}
-            onChangeText={(val) => handleChange('reportFrom', val)}
-            />
+                {/* Header Form */}
+                <Text style={styles.label}>ID SPPG</Text>
+                <TextInput
+                    style={styles.input}
+                    value={form.headerForm.sppgId}
+                    editable={false}
+                />
 
-            {/* Report Untuk */}
-            <Text style={styles.label}>Report Untuk</Text>
-            <TextInput
-            style={styles.input}
-            placeholder="Bapak / Ibu ..."
-            value={form.reportTo}
-            onChangeText={(val) => handleChange('reportTo', val)}
-            />
+                <Text style={styles.label}>Report Dari</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Kontraktor Pelaksana Dapur ..."
+                    value={form.headerForm.reportedBy}
+                    onChangeText={(val) => handleChange('headerForm', 'reportedBy', val)}
+                />
 
-            {/* Keterangan */}
-            <Text style={styles.label}>Keterangan</Text>
-            <TextInput
-                style={[styles.input, styles.textArea]}
-                multiline
-                placeholder="Tuliskan keterangan..."
-                value={form.description}
-                onChangeText={(val) => handleChange('description', val)}
-            />
+                <Text style={styles.label}>Report Untuk</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Bapak / Ibu ..."
+                    value={form.headerForm.reportedTo}
+                    onChangeText={(val) => handleChange('headerForm', 'reportedTo', val)}
+                />
 
-            {/* MULTI SELECT: Pekerjaan yang sudah dilaksanakan */}
-            <Text style={styles.label}>Pekerjaan yang sudah dilaksanakan</Text>
-            <View style={styles.pickerContainer}>
-            <Picker
-                selectedValue=""
-                onValueChange={(val) => appendToArrayField('workDone', val)}
-            >
-                <Picker.Item label="Pilih pekerjaan..." value="" />
-                {workDoneList.map((item, index) => (
-                <Picker.Item key={index} label={item} value={item} />
-                ))}
-            </Picker>
-            </View>
+                <Text style={styles.label}>Keterangan</Text>
+                <TextInput
+                    style={[styles.input, styles.textArea]}
+                    multiline
+                    value={form.headerForm.description}
+                    onChangeText={(val) => handleChange('headerForm', 'description', val)}
+                />
 
-            {/* List pilihan yang sudah dipilih */}
-            {form.workDone.length > 0 && (
-            <View style={styles.selectedListContainer}>
-                {form.workDone.map((item, index) => (
-                <View key={index} style={styles.selectedItem}>
-                    <Text style={styles.selectedText}>{item}</Text>
-                    <TouchableOpacity
-                    onPress={() => removeFromArrayField('workDone', item)}
-                    style={styles.removeButton}
+                {/* Material Picker */}
+                <Text style={styles.label}>Material yang tersedia</Text>
+                <View style={styles.pickerContainer}>
+                    <Picker
+                        selectedValue=""
+                        onValueChange={(val) => {
+                            if (val) appendToArrayField('generalInformation', 'materialsUsed', val);
+                        }}
                     >
-                    <Text style={styles.removeButtonText}>✕</Text>
+                        <Picker.Item label="Pilih material..." value="" />
+                        {materialList.map((item, i) => (
+                            <Picker.Item key={i} label={item.label} value={item.value} />
+                        ))}
+                    </Picker>
+                </View>
+
+                {form.generalInformation.materialsUsed.length > 0 && (
+                    <View style={styles.selectedListContainer}>
+                        {form.generalInformation.materialsUsed.map((value, i) => (
+                            <View key={i} style={styles.selectedItem}>
+                                <Text style={styles.selectedText}>{getLabel(materialList, value)}</Text>
+                                <TouchableOpacity
+                                    onPress={() => removeFromArrayField('generalInformation', 'materialsUsed', value)}
+                                    style={styles.removeButton}
+                                >
+                                    <Text style={styles.removeButtonText}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Tools Picker */}
+                <Text style={styles.label}>Alat Kerja</Text>
+                <View style={styles.pickerContainer}>
+                    <Picker
+                        selectedValue=""
+                        onValueChange={(val) => {
+                            if (val) appendToArrayField('generalInformation', 'toolsUsed', val);
+                        }}
+                    >
+                        <Picker.Item label="Pilih alat kerja..." value="" />
+                        {toolsList.map((item, i) => (
+                            <Picker.Item key={i} label={item.label} value={item.value} />
+                        ))}
+                    </Picker>
+                </View>
+
+                {form.generalInformation.toolsUsed.length > 0 && (
+                    <View style={styles.selectedListContainer}>
+                        {form.generalInformation.toolsUsed.map((value, i) => (
+                            <View key={i} style={styles.selectedItem}>
+                                <Text style={styles.selectedText}>{getLabel(toolsList, value)}</Text>
+                                <TouchableOpacity
+                                    onPress={() => removeFromArrayField('generalInformation', 'toolsUsed', value)}
+                                    style={styles.removeButton}
+                                >
+                                    <Text style={styles.removeButtonText}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Cuaca */}
+                <Text style={styles.label}>Cuaca Hari Ini</Text>
+                <View style={styles.pickerContainer}>
+                    <Picker
+                        selectedValue={form.generalInformation.weatherCondition}
+                        onValueChange={(val) => handleChange('generalInformation', 'weatherCondition', val)}
+                    >
+                        <Picker.Item label="Pilih cuaca..." value="" />
+                        {weatherList.map((item, i) => (
+                            <Picker.Item key={i} label={item} value={item} />
+                        ))}
+                    </Picker>
+                </View>
+
+                {/* Kendala dan Saran */}
+                <Text style={styles.label}>Kendala</Text>
+                <TextInput
+                    style={[styles.input, styles.textArea]}
+                    multiline
+                    value={form.generalInformation.obstacles}
+                    onChangeText={(val) => handleChange('generalInformation', 'obstacles', val)}
+                />
+
+                <Text style={styles.label}>Saran</Text>
+                <TextInput
+                    style={[styles.input, styles.textArea]}
+                    multiline
+                    value={form.generalInformation.suggestions}
+                    onChangeText={(val) => handleChange('generalInformation', 'suggestions', val)}
+                />
+
+                {/* Signature */}
+                <Text style={styles.label}>Tanda Tangan</Text>
+                <View style={styles.signatureContainer}>
+                    <SignatureCapture
+                        style={{ flex: 1 }}
+                        ref={signRef}
+                        onSaveEvent={handleSignatureSave}
+                        showNativeButtons={false}
+                        showTitleLabel={false}
+                        strokeColor="#000000"
+                        minStrokeWidth={1}
+                        maxStrokeWidth={15}
+                    />
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <TouchableOpacity
+                        style={styles.resetButton}
+                        onPress={() => {
+                            signRef.current?.resetImage();
+                            handleChange('generalInformation', 'signatureBase64Img', null);
+                        }}
+                    >
+                        <Text style={styles.resetButtonText}>Reset</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.resetButton, { backgroundColor: '#28a745' }]}
+                        onPress={() => signRef.current?.saveImage()}
+                    >
+                        <Text style={styles.resetButtonText}>Save</Text>
                     </TouchableOpacity>
                 </View>
-                ))}
-            </View>
-            )}
 
-            {/* MATERIAL (multi-select) */}
-            <Text style={styles.label}>Material yang tersedia</Text>
-            <View style={styles.pickerContainer}>
-            <Picker
-                selectedValue=""
-                onValueChange={(val) => appendToArrayField('materials', val)}
-            >
-                <Picker.Item label="Pilih material..." value="" />
-                {materialList.map((item, index) => (
-                <Picker.Item key={index} label={item} value={item} />
-                ))}
-            </Picker>
-            </View>
+                {form.generalInformation.signatureBase64Img && (
+                    <Image
+                        source={{ uri: `data:image/png;base64,${form.generalInformation.signatureBase64Img}` }}
+                        style={{ width: '100%', height: 150, borderWidth: 1, borderColor: '#000', marginBottom: 20 }}
+                        resizeMode="contain"
+                    />
+                )}
 
-            {/* List Material */}
-            {form.materials.length > 0 && (
-            <View style={styles.selectedListContainer}>
-                {form.materials.map((item, index) => (
-                <View key={index} style={styles.selectedItem}>
-                    <Text style={styles.selectedText}>{item}</Text>
+                <Text style={styles.label}>Yang Menandatangani</Text>
+                <TextInput
+                    style={styles.input}
+                    value={form.generalInformation.signerPosition}
+                    onChangeText={(val) => handleChange('generalInformation', 'signerPosition', val)}
+                />
+
+                <Text style={styles.label}>Nama Penandatangan</Text>
+                <TextInput
+                    style={styles.input}
+                    value={form.generalInformation.signerName}
+                    onChangeText={(val) => handleChange('generalInformation', 'signerName', val)}
+                />
+
+                {/* Navigation Buttons */}
+                <View style={styles.navButtons}>
                     <TouchableOpacity
-                    onPress={() => removeFromArrayField('materials', item)}
-                    style={styles.removeButton}
+                        style={[styles.navButton, { backgroundColor: '#6c757d' }]}
+                        onPress={() => navigation.navigate('ProgressForm')}
                     >
-                    <Text style={styles.removeButtonText}>✕</Text>
+                        <Text style={styles.navButtonText}>Kembali</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.navButton, { backgroundColor: '#0068A7' }]}
+                        onPress={handleSubmit}
+                    >
+                        <Text style={styles.navButtonText}>Submit</Text>
                     </TouchableOpacity>
                 </View>
-                ))}
-            </View>
-            )}
+            </ScrollView>
 
-            {/* TOOLS (multi-select) */}
-            <Text style={styles.label}>Alat Kerja</Text>
-            <View style={styles.pickerContainer}>
-            <Picker
-                selectedValue=""
-                onValueChange={(val) => appendToArrayField('tools', val)}
+            {/* === Modal Konfirmasi === */}
+            <Modal
+                visible={showConfirm}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowConfirm(false)}
             >
-                <Picker.Item label="Pilih alat kerja..." value="" />
-                {toolsList.map((item, index) => (
-                <Picker.Item key={index} label={item} value={item} />
-                ))}
-            </Picker>
-            </View>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10 }}>
+                            Konfirmasi Pengiriman
+                        </Text>
+                        <Text style={{ fontSize: 14, color: '#555', marginBottom: 20 }}>
+                            Apakah Anda yakin ingin mengirim data laporan ini?
+                        </Text>
 
-            {/* List Tools */}
-            {form.tools.length > 0 && (
-            <View style={styles.selectedListContainer}>
-                {form.tools.map((item, index) => (
-                <View key={index} style={styles.selectedItem}>
-                    <Text style={styles.selectedText}>{item}</Text>
-                    <TouchableOpacity
-                    onPress={() => removeFromArrayField('tools', item)}
-                    style={styles.removeButton}
-                    >
-                    <Text style={styles.removeButtonText}>✕</Text>
-                    </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, { backgroundColor: '#6c757d' }]}
+                                onPress={() => setShowConfirm(false)}
+                            >
+                                <Text style={styles.modalButtonText}>Batal</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.modalButton, { backgroundColor: '#0068A7', marginLeft: 10 }]}
+                                onPress={submitData}
+                            >
+                                <Text style={styles.modalButtonText}>OK Kirim</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
-                ))}
-            </View>
+            </Modal>
+
+            {loading && (
+                <View style={styles.loaderOverlay}>
+                    <ActivityIndicator size="large" color="#0068A7" />
+                </View>
             )}
-
-            {/* Cuaca Hari Ini */}
-            <Text style={styles.label}>Cuaca Hari Ini (Terlapor)</Text>
-            <View style={styles.pickerContainer}>
-            <Picker
-                selectedValue={form.weather}
-                onValueChange={(val) => handleChange('weather', val)}
-            >
-                <Picker.Item label="Pilih cuaca..." value="" />
-                {weatherList.map((item, index) => (
-                <Picker.Item key={index} label={item} value={item} />
-                ))}
-            </Picker>
-            </View>
-
-            {/* Kendala */}
-            <Text style={styles.label}>Kendala</Text>
-            <TextInput
-            style={[styles.input, styles.textArea]}
-            multiline
-            placeholder="Tuliskan kendala..."
-            value={form.issues}
-            onChangeText={(val) => handleChange('issues', val)}
-            />
-
-            {/* Saran */}
-            <Text style={styles.label}>Saran</Text>
-            <TextInput
-            style={[styles.input, styles.textArea]}
-            multiline
-            placeholder="Tuliskan saran..."
-            value={form.suggestion}
-            onChangeText={(val) => handleChange('suggestion', val)}
-            />
-
-            {/* Tanda Tangan */}
-            <Text style={styles.label}>Tanda Tangan</Text>
-            <View style={styles.signatureContainer}>
-            <SignatureCapture
-                style={{ flex: 1, height: 200, borderWidth: 1, borderColor: '#000', borderRadius: 8 }}
-                ref={signRef}
-                onSaveEvent={(result) => console.log(result.pathName)}
-                onDragEvent={() => console.log('signing')}
-                showNativeButtons={false}
-                showTitleLabel={false}
-                viewMode={'portrait'}
-                minStrokeWidth={2}
-                maxStrokeWidth={4}
-                backgroundColor="#ffffff"
-                strokeColor="#000000"
-            />
-            </View>
-
-            {/* Tombol Reset Signature */}
-            <View style={styles.signatureButtons}>
-            <TouchableOpacity
-                style={styles.resetButton}
-                onPress={() => {
-                if (signRef.current) {
-                    signRef.current.resetImage();
-                    setSignature(null);
-                }
-                }}
-            >
-                <Text style={styles.resetButtonText}>Reset</Text>
-            </TouchableOpacity>
-            </View>
-
-            {/* Yang Menandatangani */}
-            <Text style={styles.label}>Yang Menandatangani</Text>
-            <TextInput
-            style={styles.input}
-            placeholder="PIC, Pemimpin Proyek, Mandor, dll"
-            value={form.signerRole}
-            onChangeText={(val) => handleChange('signerRole', val)}
-            />
-
-            {/* Nama Penandatangan */}
-            <Text style={styles.label}>Nama Penandatangan</Text>
-            <TextInput
-            style={styles.input}
-            placeholder="Masukkan nama penandatangan"
-            value={form.signerName}
-            onChangeText={(val) => handleChange('signerName', val)}
-            />
-
-            {/* Tombol Navigasi */}
-            <View style={styles.navButtons}>
-            <TouchableOpacity
-                style={[styles.navButton, { backgroundColor: '#6c757d' }]}
-                onPress={() => navigation.navigate('ProgressForm')}
-            >
-                <Text style={styles.navButtonText}>Kembali</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={[styles.navButton, { backgroundColor: '#0068A7' }]}
-                onPress={() => console.log('Form Data:', form)}
-            >
-                <Text style={styles.navButtonText}>Submit</Text>
-            </TouchableOpacity>
-            </View>
-        </ScrollView>
         </View>
     );
 };
 
 export default GeneralInformationForm;
 
-// === Styles ===
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
     scroll: { padding: 20, paddingBottom: 15 },
@@ -369,7 +478,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginBottom: 20,
     },
-    signatureButtons: { marginBottom: 20, alignItems: 'flex-end' },
     resetButton: {
         backgroundColor: '#dc3545',
         paddingVertical: 8,
@@ -377,7 +485,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     resetButtonText: { color: '#fff', fontWeight: '600' },
-    navButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+    navButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 80 },
     navButton: {
         flex: 1,
         paddingVertical: 12,
@@ -385,8 +493,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     navButtonText: { color: '#fff', fontWeight: '600' },
-
-    // Additional Styles for Multi-Select
     selectedListContainer: {
         marginBottom: 15,
         borderWidth: 1,
@@ -403,13 +509,43 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
-    selectedText: { flex: 1, color: '#333', fontSize: 14 },
+    selectedText: { color: '#333', fontSize: 14 },
     removeButton: {
         backgroundColor: '#dc3545',
-        borderRadius: 15,
-        paddingVertical: 2,
-        paddingHorizontal: 8,
-        marginLeft: 10,
+        borderRadius: 20,
+        width: 25,
+        height: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     removeButtonText: { color: '#fff', fontWeight: 'bold' },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        width: '80%',
+        padding: 20,
+        borderRadius: 10,
+        elevation: 5,
+    },
+    modalButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        borderRadius: 8,
+    },
+    modalButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    loaderOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(255,255,255,0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 });

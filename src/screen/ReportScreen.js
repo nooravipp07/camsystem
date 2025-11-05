@@ -1,183 +1,275 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, SafeAreaView, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+    View,
+    Text,
+    FlatList,
+    Image,
+    StyleSheet,
+    SafeAreaView,
+    TouchableOpacity,
+    RefreshControl,
+    ActivityIndicator,
+} from 'react-native';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
 import moment from 'moment';
-import { BASE_URL, BASE_IMG_URL } from '../config/Config';
+import { AuthContext } from '../context/AuthContext';
 import { ReportContext } from '../context/ReportContext';
+import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 
-const ReportScreen = ( {navigation} ) => {
-	const { token } = useContext(AuthContext);
-	const { reports, setReports } = useContext(ReportContext);
-	const [ refreshing, setRefreshing]  = useState(false);
+const ReportScreen = ({ navigation }) => {
+    const { token } = useContext(AuthContext);
+    const { reports, setReports } = useContext(ReportContext);
+    const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		const interval = setInterval(() => {
-			handleRefresh();
-		}, 20000);	
-		getReports();
-		return() => {
-			clearInterval(interval);
-		}
-	}, []);
+    useEffect(() => {
+        getReports();
+        const interval = setInterval(() => {
+            getReports();
+        }, 20000);
+        return () => clearInterval(interval);
+    }, []);
 
-	const getReports = async () => {
-		try {
-			const response = await axios.get(`${BASE_URL}/reports?perPage=50&page=1&search=&orderBy=created_at&sortBy=desc`, {
-				headers: {
-					Authorization: `Bearer ${JSON.parse(token)}`,
-				},
-			});
+    const getReports = async () => {
+        try {
+            const response = await axios.get(
+                `${BASE_URL}/reports?perPage=50&page=1&search=&orderBy=created_at&sortBy=desc`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${JSON.parse(token)}`,
+                    },
+                }
+            );
+            const data = response.data.response.data;
+            setReports(data || []);
+        } catch (error) {
+            console.error('Error fetching reports:', error);
+        } finally {
+            setRefreshing(false);
+            setLoading(false);
+        }
+    };
 
-			const data = response.data.response.data;
-			if(response){
-				setReports(data);
-				setRefreshing(false);
+    const handleRefresh = () => {
+        if (refreshing) return;
+        setRefreshing(true);
+        getReports();
+    };
 
-			}else{
-				console.log('gagal fetch data')
-			}
-		} catch (error) {
-			console.error(error);
-		}
-	}
+    const renderItem = ({ item }) => {
+        const image =
+            item.photos.find(
+                (val) =>
+                    val.extension_file !== 'application/pdf' &&
+                    val.extension_file !== 'video/mp4'
+            ) || null;
 
-	const handleRefresh = () => {
-		if (refreshing) return;
-	  
-		setRefreshing(true);
-	  
-		// Perform data fetching or any asynchronous operation
-		getReports();
-		
-	 };
+        return (
+            <TouchableOpacity
+                style={styles.card}
+                onPress={() =>
+                    navigation.navigate('ReportDetailScreen', { reportId: item.id })
+                }
+            >
+                <View style={styles.cardHeader}>
+                    <Text style={styles.code}>#{item.id}</Text>
+                    <Text style={styles.status}>Laporan</Text>
+                </View>
 
-	const Item = ({ id, desc, date , hour, image}) => (
-		<TouchableOpacity 
-			style={styles.newsContainer}
-			onPress={() => {
-				navigation.navigate('ReportDetailScreen', {
-					reportId: id
-				})}
-			}
-		>
-			{image !== undefined ? 
-				
-				<Image 
-					style={styles.newsImage} 
-					source={{ uri: `${BASE_IMG_URL}${image.file}`}} 
-				/>
-				:
-				<Image
-					style={styles.newsImage}
-					source={require('../assets/Icons/kamera.png')}
-				/>
-			}
-			<View style={{ flex:3, flexDirection: 'column' }}>
-				<View style={styles.newsDescription}>
-					<Text style={{ flex: 1, color: '#a7a9ac' }}>{moment(date, 'YYYY-MM-DD').format('DD MMMM YYYY')}</Text>
-						<Text style={{ color: '#00aeef'}}>{hour.substring(0, 5)}</Text>
-					</View>
-					<View style={styles.newsTitle}>
-						<Text style={{ flex: 1, color: '#a7a9ac', fontWeight: 'bold', textAlign: 'left' }}>{desc.substring(0, 120)} ... </Text>
-					</View>
-			</View>
-		</TouchableOpacity>
-	);
+                <View style={styles.cardBody}>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Tanggal:</Text>
+                        <Text style={styles.value}>
+                            {moment(item.date, 'YYYY-MM-DD').format('DD MMM YYYY')}
+                        </Text>
+                    </View>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Waktu:</Text>
+                        <Text style={styles.value}>{item.hour?.substring(0, 5)}</Text>
+                    </View>
+                    <View style={styles.imageWrapper}>
+                        {image ? (
+                            <Image
+                                source={{ uri: `${BASE_IMG_URL}${image.file}` }}
+                                style={styles.image}
+                            />
+                        ) : (
+                            <Image
+                                source={require('../assets/Icons/kamera.png')}
+                                style={styles.image}
+                            />
+                        )}
+                    </View>
+                    <Text style={styles.description}>
+                        {item.desc?.substring(0, 120)}...
+                    </Text>
+                </View>
 
-	return (
-		<View style={styles.container}>
-			<View style={{flexDirection: 'row', paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#adbcb1',}}>
-				<Text style={{fontWeight: 'bold',fontSize: 32, color: '#ffffff'}}>Laporan Kejadian</Text>
-			</View>
-			<Text style={styles.welcomeText}>Daftar Laporan</Text>
-			<SafeAreaView style={styles.newsListContainer}>
-				<FlatList
-					data={reports}
-					renderItem={({ item }) => <Item id={item.id} desc={item.desc} date={item.date} hour={item.hour} image={item.photos.find(val => val.extension_file !== "application/pdf" && val.extension_file !== "video/mp4")} />}
-					keyExtractor={item => item.id}
-					refreshControl={
-						<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-					}
-				/>
-			</SafeAreaView >
-			<TouchableOpacity 
-				style={styles.buttonContainer}
-				onPress={() => navigation.navigate('ReportFormStep1')}
-			>
-				<Text style={styles.buttonText}>TAMBAH LAPORAN</Text>
-			</TouchableOpacity>
-		</View>
-	);
+                <View style={styles.cardFooter}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#17a2b8' }]}
+                        onPress={() =>
+                            navigation.navigate('ReportDetailScreen', { reportId: item.id })
+                        }
+                    >
+                        <Text style={styles.actionText}>👁️ Lihat Detail</Text>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#fff" size="large" />
+                <Text style={{ color: '#fff', marginTop: 10 }}>
+                    Memuat laporan...
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <Text style={styles.heading}>LAPORAN KEJADIAN</Text>
+
+            <SafeAreaView style={styles.listContainer}>
+                <FlatList
+                    data={reports}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            colors={['#0068A7']}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <Text style={styles.emptyText}>Belum ada laporan.</Text>
+                    }
+                />
+            </SafeAreaView>
+
+            <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('ReportFormStep1')}
+            >
+                <Text style={styles.addButtonText}>＋ Tambah Laporan</Text>
+            </TouchableOpacity>
+        </View>
+    );
 };
 
+// ===== STYLES =====
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		padding: 15,
-		backgroundColor: '#122E5F'
-	},
-	heading: {
-		fontWeight: 'bold',
-		fontSize: 35,
-		color: '#ffffff',
-		paddingBottom: 5,
-		borderBottomWidth: 1,
-		borderBottomColor: '#adbcb1',
-	},
-	welcomeText: {
-		fontWeight: 'bold',
-		fontSize: 25,
-		color: '#ffffff',
-		paddingTop: 10,
-		paddingBottom: 10,
-	},
-	newsListContainer: {
-		flex: 1,
-		borderRadius: 3,
-		backgroundColor: '#ffffffcc',
-		marginTop: 10,
-		marginBottom: 10,
-	},
-	newsContainer: {
-		flex: 1,
-		flexDirection: 'row',
-		padding: 8,
-		borderTopWidth: 1,
-		borderTopColor: '#00aeef',
-		borderBottomWidth: 1,
-		borderBottomColor: '#00aeef',
-	},
-	newsImage: {
-		flex: 1,
-		width: 70,
-		height: 70,
-		marginRight: 8,
-	},
-	newsDescription: {
-		flexDirection: 'row', 
-		justifyContent: 'space-between',
-		paddingLeft: 7
-	},
-	newsTitle: {
-		flexDirection: 'row',
-		justifyContent: 'center',
-		paddingLeft: 7,
-		paddingTop: 5,
-	},
-	buttonContainer: {
-		backgroundColor: '#0068A7',
-		paddingVertical: 12,
-		borderRadius: 4,
-		width: '100%',
-		marginTop: 30,
-	},
-	buttonText: {
-		textAlign: 'center',
-		color: '#ffff',
-		fontWeight: '700',
-	},
-
+    container: {
+        flex: 1,
+        padding: 15,
+        backgroundColor: '#122E5F',
+    },
+    heading: {
+        fontWeight: 'bold',
+        fontSize: 20,
+        color: '#fff',
+        paddingBottom: 5,
+        borderBottomWidth: 1,
+        borderBottomColor: '#adbcb1',
+    },
+    listContainer: { flex: 1, marginTop: 15 },
+    card: {
+        backgroundColor: '#ffffffcc',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 12,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    code: {
+        backgroundColor: '#e6f0ff',
+        color: '#0068A7',
+        fontWeight: 'bold',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        fontSize: 13,
+    },
+    status: {
+        backgroundColor: '#17a2b8',
+        color: '#fff',
+        fontWeight: 'bold',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        fontSize: 12,
+    },
+    cardBody: { marginTop: 10 },
+    row: { flexDirection: 'row', marginBottom: 5 },
+    label: { fontWeight: 'bold', color: '#333', width: 70 },
+    value: { color: '#333' },
+    description: {
+        fontSize: 13,
+        color: '#333',
+        marginTop: 10,
+        fontStyle: 'italic',
+    },
+    imageWrapper: {
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    image: {
+        width: 150,
+        height: 150,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ccc',
+    },
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 10,
+        gap: 10,
+    },
+    actionButton: {
+        borderRadius: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+    },
+    actionText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 13,
+    },
+    addButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 14,
+        borderRadius: 8,
+        marginTop: 15,
+        marginBottom: 80
+    },
+    addButtonText: {
+        textAlign: 'center',
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#122E5F',
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: '#fff',
+        fontStyle: 'italic',
+        marginTop: 20,
+    },
 });
 
 export default ReportScreen;

@@ -1886,6 +1886,11 @@
   resolved "https://registry.npmjs.org/@react-native-community/geolocation/-/geolocation-3.0.6.tgz"
   integrity sha512-+iidKFgw1HxCJSHVnlywAKu6uerdpDAKTXLRnlsUdhgqtgTiIixb496Z267iPVFmIO1bp4lOU6UiwzmvcyXdbg==
 
+"@react-native-community/netinfo@^11.4.1":
+  version "11.4.1"
+  resolved "https://registry.npmjs.org/@react-native-community/netinfo/-/netinfo-11.4.1.tgz"
+  integrity sha512-B0BYAkghz3Q2V09BF88RA601XursIEA111tnc2JOaN7axJWmNefmfjZqw/KdSxKZp7CZUuPpjBmz/WCR9uaHYg==
+
 "@react-native-community/slider@^5.0.1":
   version "5.0.1"
   resolved "https://registry.npmjs.org/@react-native-community/slider/-/slider-5.0.1.tgz"

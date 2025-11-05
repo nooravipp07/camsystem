@@ -2,6 +2,8 @@ import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
+import { BASE_URL } from '../config/Config';
+
 export const AuthContext = createContext();
 
 export const AuthProvider = ({children}) => {
@@ -11,7 +13,7 @@ export const AuthProvider = ({children}) => {
 
     const login = async (username, password, imei) => {
         setIsLoading(true);
-        await axios.post(`http://103.176.44.189/pamsystem-api/api/authentication/login`, {
+        await axios.post(`${BASE_URL}/authentication/login`, {
             username, 
             password, 
             imei

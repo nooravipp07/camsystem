@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import moment from 'moment';
+import NetInfo from '@react-native-community/netinfo';
 import { AuthContext } from '../context/AuthContext';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 
@@ -20,8 +21,13 @@ const HomeScreen = ({ navigation }) => {
 
 	const [reports, setReports] = useState([]);
 	const [news, setNews] = useState([]);
+	const [isConnected, setIsConnected] = useState(true);
 
 	useEffect(() => {
+		const unsubscribe = NetInfo.addEventListener(state => {
+			setIsConnected(state.isConnected);
+		});
+
 		const interval = setInterval(() => {
 			fetchNews();
 			fetchReports();
@@ -30,7 +36,10 @@ const HomeScreen = ({ navigation }) => {
 		fetchNews();
 		fetchReports();
 
-		return () => clearInterval(interval);
+		return () => {
+			unsubscribe();
+			clearInterval(interval);
+		};
 	}, []);
 
 	const fetchReports = async () => {
@@ -70,6 +79,16 @@ const HomeScreen = ({ navigation }) => {
 				{/* Header */}
 				<View style={styles.headerContainer}>
 					<Text style={styles.headerTitle}>Dashboard</Text>
+					<View
+						style={[
+							styles.networkIndicator,
+							{ backgroundColor: isConnected ? '#4CAF50' : '#F44336' },
+						]}
+					>
+						<Text style={styles.networkText}>
+							{isConnected ? 'Online' : 'Offline'}
+						</Text>
+					</View>
 				</View>
 
 				{/* Welcome + Profile */}
@@ -205,11 +224,24 @@ const styles = StyleSheet.create({
 		borderBottomColor: '#adbcb1',
 		paddingBottom: 6,
 		marginBottom: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
 	},
 	headerTitle: {
 		fontSize: 32,
 		fontWeight: 'bold',
 		color: '#fff',
+	},
+	networkIndicator: {
+		paddingHorizontal: 10,
+		paddingVertical: 4,
+		borderRadius: 10,
+	},
+	networkText: {
+		color: '#fff',
+		fontWeight: 'bold',
+		fontSize: 12,
 	},
 	welcomeText: {
 		fontSize: 22,
@@ -234,29 +266,19 @@ const styles = StyleSheet.create({
 		marginRight: 12,
 	},
 	profileInfo: { flex: 1 },
-	profileName: {
-		color: '#fff',
-		fontSize: 20,
-		fontWeight: 'bold',
-	},
-	profileSub: {
-		color: '#fff',
-		fontSize: 15,
-	},
-	profileLocation: {
-		color: '#fff',
-		fontSize: 14,
-	},
+	profileName: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+	profileSub: { color: '#fff', fontSize: 15 },
+	profileLocation: { color: '#fff', fontSize: 14 },
 	menuGrid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
-		justifyContent: 'flex-start', // biar baris terakhir item menempel kiri
-		columnGap: 18, // jarak horizontal antar kolom
-		rowGap: 10, // jarak vertikal antar baris
+		justifyContent: 'flex-start',
+		columnGap: 18,
+		rowGap: 10,
 		marginBottom: 16,
 	},
 	menuItem: {
-		width: '30%', // 3 kolom
+		width: '30%',
 		backgroundColor: '#ffffffcc',
 		borderRadius: 12,
 		alignItems: 'center',
@@ -286,16 +308,8 @@ const styles = StyleSheet.create({
 		backgroundColor: '#2761a9',
 		padding: 10,
 	},
-	sectionTitle: {
-		fontSize: 18,
-		fontWeight: 'bold',
-		color: '#fff',
-	},
-	sectionMore: {
-		fontSize: 16,
-		color: '#fff',
-		fontWeight: '500',
-	},
+	sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
+	sectionMore: { fontSize: 16, color: '#fff', fontWeight: '500' },
 	itemRow: {
 		flexDirection: 'row',
 		padding: 10,
