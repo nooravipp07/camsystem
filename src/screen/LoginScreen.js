@@ -20,30 +20,6 @@ const LoginScreen = ({ navigation}) => {
         setImei(uniqueId);
     });
 
-    // const handleLogin = async () => {
-	// 	await axios.post(`${BASE_URL}/authentication/login`, {
-    //         username: username,
-    //         password: password,
-    //         imei: imei,
-    //     })
-    //     .then(res => {
-    //         let data = res.data;
-    //         // console.log(res.data)
-    //         if(data.status == 200 && data.result == true){
-    //             setToken(JSON.stringify(res.data.response.token));
-    //             setUserInfo(JSON.stringify(res.data.response.data));
-    //             navigation.navigate('MainNav', { screen: 'Dashboard' });
-    //             setIsLoading(false);
-    //         }else{
-    //             alert(data.message);
-    //             setIsLoading(false)
-    //         }
-    //     })
-    //     .catch(error => {
-    //         console.log(error)
-    //     })
-	// };
-
 	const handleLogin = async () => {
 		setIsLoading(true);
 		try {

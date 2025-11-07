@@ -516,6 +516,7 @@ const styles = StyleSheet.create({
         padding: 10,
         marginBottom: 15,
         backgroundColor: '#fff',
+        color: '#000',
     },
     textArea: { height: 80, textAlignVertical: 'top' },
     pickerContainer: {

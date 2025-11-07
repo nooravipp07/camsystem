@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
 	modalBox: { backgroundColor: "#fff", width: "85%", borderRadius: 10, padding: 20, elevation: 4 },
 	modalTitle: { fontSize: 18, fontWeight: "bold", color: "#122E5F", marginBottom: 8 },
 	modalSubtitle: { fontSize: 13, color: "#555", marginBottom: 12 },
-	input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, fontSize: 14, marginBottom: 16 },
+	input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, fontSize: 14, marginBottom: 16, color: '#000', },
 	modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 },
 	modalButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
 	modalButtonText: { color: "#fff", fontWeight: "600" },
