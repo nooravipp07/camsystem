@@ -49,7 +49,7 @@ const ProgressForm = ({ navigation, route }) => {
 			if (!sppgId) return;
 				try {
 					const response = await axios.get(`${BASE_URL}/progres-sppg/${sppgId}`, {
-						headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+						headers: { Authorization: `Bearer ${token}` },
 					});
 					const data = response?.data?.response;
 					if (data) {
@@ -142,7 +142,11 @@ const ProgressForm = ({ navigation, route }) => {
 
 	return (
 		<ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-		<Text style={styles.header}>PROGRES (mengacu Permen PUPR)</Text>
+		<View style={styles.header}>
+			<View>
+				<Text style={styles.headerTitle}>PROGRES (mengacu Permen PUPR)</Text>
+			</View>
+		</View>
 		<Text style={styles.subHeader}>Total Progress</Text>
 
 		<Progress.Bar
@@ -197,7 +201,7 @@ const ProgressForm = ({ navigation, route }) => {
 		<View style={styles.navButtons}>
 			<TouchableOpacity
 				style={[styles.navButton, { backgroundColor: '#6c757d' }]}
-				onPress={() => navigation.navigate('ProgressForm')}
+				onPress={() => navigation.navigate('Progres SPPG')}
 			>
 				<Text style={styles.navButtonText}>Kembali</Text>
 			</TouchableOpacity>
@@ -278,7 +282,33 @@ export default ProgressForm;
 
 const styles = StyleSheet.create({
 	container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-	header: { fontSize: 20, fontWeight: "bold", color: "#122E5F", marginBottom: 4 },
+	header: {
+		marginBottom: 10
+	},
+	headerTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#0d2143',
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#888',
+    },
+    headerButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    headerButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
 	subHeader: { fontSize: 14, fontWeight: "600", color: "#333", marginBottom: 6 },
 	totalText: { fontSize: 14, fontWeight: "bold", color: "#2761a9", marginBottom: 16 },
 	card: { backgroundColor: "#f9f9f9", borderRadius: 8, padding: 12, marginBottom: 12, elevation: 2 },
@@ -305,7 +335,6 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		marginTop: 20,
-		marginBottom: 80,
 		gap: 10,
 	},
 	navButton: {

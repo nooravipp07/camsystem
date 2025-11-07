@@ -19,7 +19,7 @@ const ProfileScreen = ({ navigation }) => {
 	const [imageCamera, setImageCamera] = useState(null);
 	const [loading, setLoading] = useState(false);
 	const { token, setUserInfo, userInfo } = useContext(AuthContext);
-	const user = JSON.parse(userInfo);
+	const user = userInfo;
 
 	const captureImage = async () => {
 		try {
@@ -83,7 +83,7 @@ const ProfileScreen = ({ navigation }) => {
 			const response = await axios.post(`${BASE_URL}/user/update`, payload, {
 				headers: {
 					'Content-Type': 'multipart/form-data',
-					Authorization: `Bearer ${JSON.parse(token)}`,
+					Authorization: `Bearer ${token}`,
 				},
 			});
 

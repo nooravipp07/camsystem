@@ -18,6 +18,10 @@ import { useProgress } from "../../context/ProgressContext";
 import { AuthContext } from "../../context/AuthContext";
 import { BASE_URL } from '../../config/Config';
 
+import { saveReport } from '../../utils/db';
+import { sendOfflineReports } from '../../utils/offlineSync';
+import NetInfo from '@react-native-community/netinfo';
+
 const GeneralInformationForm = ({ navigation }) => {
     const { updateProgressPayload, progressPayload } = useProgress();
     const { token } = useContext(AuthContext);
@@ -102,49 +106,67 @@ const GeneralInformationForm = ({ navigation }) => {
         setShowConfirm(true);
     };
 
-    // === Actual Submit Handler ===
     const submitData = async () => {
         setShowConfirm(false);
         setLoading(true);
 
+        const payload = form;
+
         try {
-            const payload = form;
-            const url = `${BASE_URL}/progres-sppg/insert`;
-            const response = await axios.post(url, payload, {
-                headers: {
-                    Authorization: `Bearer ${JSON.parse(token)}`,
-                    'Content-Type': 'application/json',
-                },
-            });
+            const state = await NetInfo.fetch();
 
-            if (response.status === 200 || response.status === 201) {
-                // ✅ clear context
-                updateProgressPayload('headerForm', {
-                    sppgId: "",
-                    total_progress: "",
-                    reportedBy: "",
-                    reportedTo: "",
-                    description: ""
-                });
-                updateProgressPayload('generalInformation', {
-                    tasksPerformed: [],
-                    materialsUsed: [],
-                    toolsUsed: [],
-                    weatherCondition: "",
-                    obstacles: "",
-                    suggestions: "",
-                    uploadedFiles: [],
-                    signatureBase64Img: "",
-                    signerPosition: "",
-                    signerName: ""
+            if (state.isConnected) {
+                // Ada internet, coba kirim online
+                const url = `${BASE_URL}/progres-sppg/insert`;
+                const response = await axios.post(url, payload, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
                 });
 
-                Alert.alert('Sukses', 'Data berhasil dikirim!', [
+                if (response.status === 200 || response.status === 201) {
+                    Alert.alert('Sukses', 'Data berhasil dikirim!', [
+                        { text: 'OK', onPress: () => navigation.navigate('ConstructionReport') }
+                    ]);
+                    // kirim laporan offline lain jika ada
+                    await sendOfflineReports();
+                } else {
+                    // Gagal, simpan offline
+                    await saveReport(payload);
+                    Alert.alert('Offline', 'Data gagal dikirim, disimpan sementara secara offline');
+                }
+            } else {
+                // Tidak ada internet, simpan offline
+                await saveReport(payload);
+                // Alert.alert('Offline', 'Tidak ada koneksi, data disimpan secara offline');
+
+                Alert.alert('Offline', 'Tidak ada koneksi, data disimpan secara offline', [
                     { text: 'OK', onPress: () => navigation.navigate('ConstructionReport') }
                 ]);
-            } else {
-                Alert.alert('Gagal', 'Gagal mengirim data');
             }
+
+            // Reset form
+            updateProgressPayload('headerForm', {
+                sppgId: "",
+                total_progress: "",
+                reportedBy: "",
+                reportedTo: "",
+                description: ""
+            });
+            updateProgressPayload('generalInformation', {
+                tasksPerformed: [],
+                materialsUsed: [],
+                toolsUsed: [],
+                weatherCondition: "",
+                obstacles: "",
+                suggestions: "",
+                uploadedFiles: [],
+                signatureBase64Img: "",
+                signerPosition: "",
+                signerName: ""
+            });
+
         } catch (error) {
             console.log('Error submit:', error.response || error.message);
             Alert.alert('Error', 'Terjadi kesalahan saat mengirim data');
@@ -152,6 +174,7 @@ const GeneralInformationForm = ({ navigation }) => {
             setLoading(false);
         }
     };
+
 
     // === Data lists ===
     const materialList = [
@@ -201,7 +224,11 @@ const GeneralInformationForm = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scroll}>
-                <Text style={styles.title}>DATA UMUM</Text>
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.headerTitle}>Informasi Umum</Text>
+                    </View>
+                </View>
 
                 {/* Header Form */}
                 <Text style={styles.label}>ID SPPG</Text>
@@ -452,6 +479,33 @@ export default GeneralInformationForm;
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
+    header: {
+		marginBottom: 10
+	},
+	headerTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#0d2143',
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#888',
+    },
+    headerButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    headerButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
     scroll: { padding: 20, paddingBottom: 15 },
     title: { fontSize: 20, fontWeight: 'bold', color: '#122E5F', marginBottom: 20 },
     label: { fontSize: 16, fontWeight: '500', color: '#333', marginBottom: 5 },
@@ -485,7 +539,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     resetButtonText: { color: '#fff', fontWeight: '600' },
-    navButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 80 },
+    navButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10},
     navButton: {
         flex: 1,
         paddingVertical: 12,

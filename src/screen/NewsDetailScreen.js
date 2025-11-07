@@ -28,7 +28,7 @@ const NewsDetailScreen = ({ route }) => {
 			try {
 				const response = await axios.get(`${BASE_URL}/news/${newsId}`, {
 					headers: {
-						Authorization: `Bearer ${JSON.parse(token)}`,
+						Authorization: `Bearer ${token}`,
 					},
 				});
 				const data = response.data.response;

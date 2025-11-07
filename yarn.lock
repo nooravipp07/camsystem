@@ -6577,6 +6577,11 @@ react-native-document-picker@^9.0.1:
   dependencies:
     invariant "^2.2.4"
 
+react-native-encrypted-storage@^4.0.3:
+  version "4.0.3"
+  resolved "https://registry.npmjs.org/react-native-encrypted-storage/-/react-native-encrypted-storage-4.0.3.tgz"
+  integrity sha512-0pJA4Aj2S1PIJEbU7pN/Qvf7JIJx3hFywx+i+bLHtgK0/6Zryf1V2xVsWcrD50dfiu3jY1eN2gesQ5osGxE7jA==
+
 react-native-exif@^0.5.0:
   version "0.5.0"
   resolved "https://registry.npmjs.org/react-native-exif/-/react-native-exif-0.5.0.tgz"
@@ -6698,6 +6703,11 @@ react-native-signature-capture@^0.4.12:
   dependencies:
     prop-types "^15.5.10"
 
+react-native-sqlite-storage@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.npmjs.org/react-native-sqlite-storage/-/react-native-sqlite-storage-6.0.1.tgz"
+  integrity sha512-1tDFjrint6X6qSYKf3gDyz+XB+X79jfiL6xTugKHPRtF0WvqMtVgdLuNqZunIXjNEvNtNVEbXaeZ6MsguFu00A==
+
 react-native-svg@*:
   version "15.14.0"
   resolved "https://registry.npmjs.org/react-native-svg/-/react-native-svg-15.14.0.tgz"
@@ -6725,7 +6735,7 @@ react-native-webview@^13.2.2, react-native-webview@>=13:
     escape-string-regexp "2.0.0"
     invariant "2.2.4"
 
-react-native@*, react-native@^*, "react-native@^0.0.0-0 || 0.60 - 0.72 || 1000.0.0", react-native@>=0.42.0, react-native@>=0.47, react-native@>=0.59, react-native@>=0.60.0, react-native@>=0.63.3, react-native@>=0.64.0, react-native@>=0.65.0, react-native@0.72.4:
+react-native@*, react-native@^*, "react-native@^0.0.0-0 || 0.60 - 0.72 || 1000.0.0", react-native@>=0.14.0, react-native@>=0.42.0, react-native@>=0.47, react-native@>=0.59, react-native@>=0.60.0, react-native@>=0.63.3, react-native@>=0.64.0, react-native@>=0.65.0, react-native@0.72.4:
   version "0.72.4"
   resolved "https://registry.npmjs.org/react-native/-/react-native-0.72.4.tgz"
   integrity sha512-+vrObi0wZR+NeqL09KihAAdVlQ9IdplwznJWtYrjnQ4UbCW6rkzZJebRsugwUneSOKNFaHFEo1uKU89HsgtYBg==

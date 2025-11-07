@@ -1,5 +1,6 @@
 import React, { useState, useContext }  from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, ImageBackground, ActivityIndicator, Image} from 'react-native';
+import EncryptedStorage from 'react-native-encrypted-storage';
 import DeviceInfo from 'react-native-device-info';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -19,29 +20,63 @@ const LoginScreen = ({ navigation}) => {
         setImei(uniqueId);
     });
 
-    const handleLogin = async () => {
-		await axios.post(`${BASE_URL}/authentication/login`, {
-            username: username,
-            password: password,
-            imei: imei,
-        })
-        .then(res => {
-            let data = res.data;
-            // console.log(res.data)
-            if(data.status == 200 && data.result == true){
-                setToken(JSON.stringify(res.data.response.token));
-                setUserInfo(JSON.stringify(res.data.response.data));
-                navigation.navigate('MainNav', { screen: 'Dashboard' });
-                setIsLoading(false);
-            }else{
-                alert(data.message);
-                setIsLoading(false)
-            }
-        })
-        .catch(error => {
-            console.log(error)
-        })
+    // const handleLogin = async () => {
+	// 	await axios.post(`${BASE_URL}/authentication/login`, {
+    //         username: username,
+    //         password: password,
+    //         imei: imei,
+    //     })
+    //     .then(res => {
+    //         let data = res.data;
+    //         // console.log(res.data)
+    //         if(data.status == 200 && data.result == true){
+    //             setToken(JSON.stringify(res.data.response.token));
+    //             setUserInfo(JSON.stringify(res.data.response.data));
+    //             navigation.navigate('MainNav', { screen: 'Dashboard' });
+    //             setIsLoading(false);
+    //         }else{
+    //             alert(data.message);
+    //             setIsLoading(false)
+    //         }
+    //     })
+    //     .catch(error => {
+    //         console.log(error)
+    //     })
+	// };
+
+	const handleLogin = async () => {
+		setIsLoading(true);
+		try {
+			const res = await axios.post(`${BASE_URL}/authentication/login`, {
+			username,
+			password,
+			imei,
+			});
+
+			const data = res.data;
+
+			if (data.status == 200 && data.result == true) {
+				const token = data.response.token;
+				const userData = data.response.data;
+
+				setToken(token);
+				setUserInfo(userData);
+
+				await EncryptedStorage.setItem('token', token);
+				await EncryptedStorage.setItem('userInfo', JSON.stringify(userData));
+
+				navigation.navigate('MainNav', { screen: 'Dashboard' });
+			} else {
+				alert(data.message);
+			}
+		} catch (error) {
+			console.error(error);
+			alert('Login gagal');
+		} finally {
+			setIsLoading(false);
+		}
 	};
+
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);

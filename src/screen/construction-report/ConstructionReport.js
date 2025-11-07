@@ -14,33 +14,41 @@ import {
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { BASE_URL } from '../../config/Config';
+import { getOfflineReports, deleteReport } from '../../utils/db';
+import { sendOfflineReports } from '../../utils/offlineSync';
+import NetInfo from '@react-native-community/netinfo';
 
 const ConstructionReport = ({ navigation }) => {
     const { token } = useContext(AuthContext);
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [offlineReports, setOfflineReports] = useState([]);
+    const [activeTab, setActiveTab] = useState('online');
 
     const [searchModalVisible, setSearchModalVisible] = useState(false);
-    const [dummySPPGList, setDummySPPGList] = useState([
-        { id: '307', name: 'Proyek Renovasi Gedung A' },
-        { id: '308', name: 'Proyek Renovasi Gedung B' },
-        { id: '309', name: 'Proyek Pembangunan Kantor' },
-        { id: '310', name: 'Proyek Jalan Raya' },
-    ]);
-    const [filteredSPPG, setFilteredSPPG] = useState(dummySPPGList);
+    const [sppgList, setSppgList] = useState([]);
+    const [filteredSPPG, setFilteredSPPG] = useState([]);
     const [searchText, setSearchText] = useState('');
     const [selectedSPPG, setSelectedSPPG] = useState(null);
+    const [loadingSPPG, setLoadingSPPG] = useState(false);
 
-    // ===== API FETCH REPORTS =====
+    const [syncing, setSyncing] = useState(false);
+
+    useEffect(() => {
+        getReports();
+        getOfflineData();
+        const interval = setInterval(() => getReports(), 20000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // === FETCH ONLINE REPORTS ===
     const getReports = async () => {
         try {
             const response = await axios.get(
                 `${BASE_URL}/progres-sppg?perPage=10&page=1&search=&orderBy=date&sortBy=desc`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${JSON.parse(token)}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                 }
             );
             const data = response?.data?.response?.data ?? [];
@@ -53,44 +61,78 @@ const ConstructionReport = ({ navigation }) => {
         }
     };
 
-    useEffect(() => {
-        getReports();
-        const interval = setInterval(() => {
-            getReports();
-        }, 20000);
-        return () => clearInterval(interval);
-    }, []);
+    // === FETCH OFFLINE DATA ===
+    const getOfflineData = async () => {
+        try {
+            const data = await getOfflineReports();
+            const parsed = data.map((r) => {
+                let parsedData = null;
+                try {
+                    parsedData = JSON.parse(r.data);
+                } catch (e) {
+                    parsedData = null;
+                }
+                return {
+                    dbId: r.id,
+                    token: r.token,
+                    payload: parsedData,
+                    createdAt: r.created_at || null,
+                };
+            });
+            setOfflineReports(parsed.reverse());
+        } catch (e) {
+            console.error('Error getOfflineData:', e);
+        }
+    };
 
-    const handleRefresh = () => {
+    // === FETCH SPPG LIST (for modal) ===
+    const getSPPGList = async () => {
+        try {
+            setLoadingSPPG(true);
+            const response = await axios.get(
+                `${BASE_URL}/progres-sppg/list-sppg?perPage=10&page=1&orderBy=date&sortBy=desc`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+            const data = response?.data?.response?.data ?? [];
+            const mapped = data.map((item) => ({
+                id: item.id.toString(),
+                name: item.yayasan_name,
+                code: item.code,
+                address: item.address,
+            }));
+            setSppgList(mapped);
+            setFilteredSPPG(mapped);
+        } catch (error) {
+            console.error('Error fetching SPPG list:', error);
+        } finally {
+            setLoadingSPPG(false);
+        }
+    };
+
+    const handleRefresh = async () => {
         if (refreshing) return;
         setRefreshing(true);
-        getReports();
+        await getReports();
+        await getOfflineData();
+        setRefreshing(false);
     };
 
-    const handleEdit = (item) => {
-        navigation.navigate('HeaderForm', { report: item });
-    };
-
-    const handleDownload = (item) => {
-        alert(`Downloading report for ${item.report_from}`);
-    };
-
-    const handlePreview = (item) => {
-        alert(`Previewing report for ${item.report_from}`);
-    };
-
-    // ===== Modal Functions =====
     const handleSearchClick = () => {
         setSearchModalVisible(true);
-        setFilteredSPPG(dummySPPGList);
+        getSPPGList();
         setSearchText('');
         setSelectedSPPG(null);
     };
 
     const handleSearchChange = (text) => {
         setSearchText(text);
-        const filtered = dummySPPGList.filter((item) =>
-            item.id.includes(text) || item.name.toLowerCase().includes(text.toLowerCase())
+        const filtered = sppgList.filter(
+            (item) =>
+                item.id.includes(text) ||
+                item.name.toLowerCase().includes(text.toLowerCase()) ||
+                item.code.toLowerCase().includes(text.toLowerCase())
         );
         setFilteredSPPG(filtered);
     };
@@ -108,17 +150,67 @@ const ConstructionReport = ({ navigation }) => {
         navigation.navigate('ProgressForm', { sppgId: selectedSPPG.id });
     };
 
-    const renderItem = ({ item }) => (
+    const handleDownload = (item) => {
+        alert(`Downloading report for ${item.report_from}`);
+    };
+
+    const handlePreview = (item) => {
+        alert(`Previewing report for ${item.report_from}`);
+    };
+
+    const handleSyncOfflineData = async (token) => {
+        try {
+            const state = await NetInfo.fetch();
+            if (!state.isConnected) {
+                alert('⚠️ Tidak ada koneksi internet. Silakan coba lagi nanti.');
+                return;
+            }
+
+            setSyncing(true);
+            const sentCount = await sendOfflineReports(token);
+            await getOfflineData();
+
+            if (sentCount > 0) {
+                alert(`✅ Berhasil mengirim ${sentCount} laporan offline ke server.`);
+            } else {
+                alert('📭 Tidak ada data draft untuk dikirim.');
+            }
+        } catch (e) {
+            console.error('Error syncing data:', e);
+            alert('❌ Gagal melakukan sinkronisasi data.');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const formatDateTime = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+
+        // Format lokal Indonesia
+        return date.toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    // === RENDER ONLINE REPORT CARD ===
+    const renderOnlineItem = ({ item }) => (
         <View style={styles.card}>
             <View style={styles.cardHeader}>
                 <Text style={styles.code}>#{item.id}</Text>
                 <Text
                     style={[
                         styles.status,
-                        item.total_progress >= 100 ? styles.statusActive : styles.statusProgress,
+                        item.total_progress >= 100
+                            ? styles.statusActive
+                            : styles.statusProgress,
                     ]}
                 >
-                    {item.total_progress >= 100 ? 'SELESAI' : 'ON PROGRESS'}
+                    {formatDateTime(item.created_at)}
                 </Text>
             </View>
 
@@ -132,17 +224,16 @@ const ConstructionReport = ({ navigation }) => {
                     {item.description || '(tidak ada deskripsi)'}
                 </Text>
             </View>
-
             <View style={styles.cardFooter}>
                 <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#17a2b8' }]}
+                    style={[styles.actionButton, { backgroundColor: '#0068A7' }]}
                     onPress={() => handlePreview(item)}
                 >
                     <Text style={styles.actionText}>👁️ Preview</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#5bc0de' }]}
+                    style={[styles.actionButton, { backgroundColor: '#0068A7' }]}
                     onPress={() => handleDownload(item)}
                 >
                     <Text style={styles.actionText}>⬇️ Download</Text>
@@ -151,6 +242,65 @@ const ConstructionReport = ({ navigation }) => {
         </View>
     );
 
+    // === RENDER OFFLINE REPORT CARD ===
+    const renderOfflineItem = ({ item }) => (
+        <View style={[styles.card, { backgroundColor: '#ccd3e9cc' }]}>
+            <View style={styles.cardHeader}>
+                <Text style={styles.code}>#D-{item.dbId}</Text>
+                <Text style={[styles.status, { backgroundColor: '#ff9800' }]}>
+                    DRAFT
+                </Text>
+            </View>
+
+            <View style={styles.cardBody}>
+                <Text style={styles.name}>
+                    {item.payload?.headerForm?.sppgId
+                        ? `SPPG: ${item.payload.headerForm.sppgId}`
+                        : `Draft ID ${item.dbId}`}
+                </Text>
+                <Text style={styles.description}>
+                    Progress: {item.payload?.headerForm?.total_progress ?? 0}%
+                </Text>
+                <Text style={styles.description}>
+                    {item.payload?.generalInformation?.obstacles || '(tidak ada deskripsi)'}
+                </Text>
+            </View>
+
+            <View style={styles.cardFooter}>
+                <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#28a745' }]}
+                    onPress={async () => {
+                        try {
+                            const state = await NetInfo.fetch();
+                            if (!state.isConnected) {
+                                alert('Tidak ada koneksi internet.');
+                                return;
+                            }
+                            await sendOfflineReports();
+                            await getOfflineData();
+                        } catch (e) {
+                            console.log('Error sending draft:', e);
+                            alert('Gagal mengirim draft.');
+                        }
+                    }}
+                >
+                    <Text style={styles.actionText}>📤 Kirim</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#dc3545' }]}
+                    onPress={async () => {
+                        await deleteReport(item.dbId);
+                        getOfflineData();
+                    }}
+                >
+                    <Text style={styles.actionText}>🗑 Hapus</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
+    // === UI ===
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -162,36 +312,109 @@ const ConstructionReport = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.heading}>LAP. PROGRES SPPG</Text>
-
-            <TouchableOpacity onPress={handleSearchClick}>
-                <View pointerEvents="none">
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Cari laporan berdasarkan ID SPPG"
-                        placeholderTextColor="#ccc"
-                        editable={false}
-                    />
+            <View style={styles.header}>
+                <View>
+                    <Text style={styles.headerTitle}>Lap. Progress SPPG</Text>
                 </View>
-            </TouchableOpacity>
+                {/* <TouchableOpacity style={styles.headerButton} onPress={handleSearchClick}>
+                    <Text style={styles.headerButtonText}>＋ Tambah</Text>
+                </TouchableOpacity> */}
+            </View>
 
+            {/* TAB SWITCHER */}
+            <View style={styles.tabContainer}>
+                <TouchableOpacity
+                    style={[styles.tabButton, activeTab === 'online' && styles.tabActive]}
+                    onPress={() => setActiveTab('online')}
+                >
+                    <Text
+                        style={[
+                            styles.tabText,
+                            activeTab === 'online' && styles.tabTextActive,
+                        ]}
+                    >
+                        Online ({reports.length})
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.tabButton, activeTab === 'draft' && styles.tabActive]}
+                    onPress={() => {
+                        setActiveTab('draft');
+                        getOfflineData();
+                    }}
+                >
+                    <Text
+                        style={[
+                            styles.tabText,
+                            activeTab === 'draft' && styles.tabTextActive,
+                        ]}
+                    >
+                        Draft ({offlineReports.length})
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.btnControlContainer}>
+                <View style={styles.syncContainer}>
+                    <TouchableOpacity
+                        style={[styles.syncButton, syncing && { backgroundColor: '#999' }]}
+                        onPress={() => handleSyncOfflineData(token)}
+                        disabled={syncing}
+                    >
+                        <Text style={styles.syncButtonText}>
+                            {syncing ? '⏳ Mengirim...' : '🔄 Sync Data'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={styles.headerButton} onPress={handleSearchClick}>
+                    <Text style={styles.headerButtonText}>＋ Tambah</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* LIST */}
             <SafeAreaView style={styles.listContainer}>
-                <FlatList
-                    data={reports}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id.toString()}
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={handleRefresh}
-                            colors={['#0068A7']}
+                {activeTab === 'online' ? (
+                    reports.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>Tidak ada laporan SPPG</Text>
+                            <TouchableOpacity
+                                style={styles.addButton}
+                                onPress={handleSearchClick}
+                            >
+                                <Text style={styles.addButtonText}>＋ Tambahkan Data Baru</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={reports}
+                            renderItem={renderOnlineItem}
+                            keyExtractor={(item) => item.id.toString()}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={handleRefresh}
+                                    colors={['#0068A7']}
+                                />
+                            }
                         />
-                    }
-                />
+                    )
+                ) : offlineReports.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Tidak ada draft offline</Text>
+                    </View>
+
+                    
+                ) : (
+                    <FlatList
+                        data={offlineReports}
+                        renderItem={renderOfflineItem}
+                        keyExtractor={(item) => item.dbId.toString()}
+                    />
+                )}
             </SafeAreaView>
 
-            {/* ===== MODAL ===== */}
+            {/* MODAL */}
             <Modal
                 visible={searchModalVisible}
                 transparent={true}
@@ -200,7 +423,6 @@ const ConstructionReport = ({ navigation }) => {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
-                        {/* Tombol close pojok kanan atas */}
                         <TouchableOpacity
                             style={styles.modalCloseIcon}
                             onPress={() => setSearchModalVisible(false)}
@@ -209,31 +431,37 @@ const ConstructionReport = ({ navigation }) => {
                         </TouchableOpacity>
 
                         <Text style={styles.modalTitle}>Pilih ID SPPG</Text>
-
                         <TextInput
                             style={styles.modalSearchInput}
-                            placeholder="Cari ID / Nama proyek..."
+                            placeholder="Cari ID / Nama proyek / Code..."
                             placeholderTextColor="#999"
                             value={searchText}
                             onChangeText={handleSearchChange}
                         />
 
-                        <FlatList
-                            data={filteredSPPG}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modalItem,
-                                        selectedSPPG?.id === item.id && { backgroundColor: '#e6f0ff' }
-                                    ]}
-                                    onPress={() => handleSelectSPPG(item)}
-                                >
-                                    <Text style={styles.modalItemText}>{item.id}</Text>
-                                    <Text style={styles.modalSubText}>{item.name}</Text>
-                                </TouchableOpacity>
-                            )}
-                        />
+                        {loadingSPPG ? (
+                            <ActivityIndicator color="#0068A7" size="large" />
+                        ) : (
+                            <FlatList
+                                data={filteredSPPG}
+                                keyExtractor={(item) => item.id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalItem,
+                                            selectedSPPG?.id === item.id && {
+                                                backgroundColor: '#e6f0ff',
+                                            },
+                                        ]}
+                                        onPress={() => handleSelectSPPG(item)}
+                                    >
+                                        <Text style={styles.modalItemText}>{item.code}</Text>
+                                        <Text style={styles.modalSubText}>{item.name}</Text>
+                                        <Text style={styles.modalSubTextSmall}>{item.address}</Text>
+                                    </TouchableOpacity>
+                                )}
+                            />
+                        )}
 
                         <TouchableOpacity
                             style={styles.modalCreateButton}
@@ -248,19 +476,116 @@ const ConstructionReport = ({ navigation }) => {
     );
 };
 
-// ===== STYLES =====
+// === STYLES ===
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 15, backgroundColor: '#122E5F' },
-    heading: { fontWeight: 'bold', fontSize: 20, color: '#fff', paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#adbcb1' },
+    container: { flex: 1, padding: 15, backgroundColor: '#fff' },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+    },
+    btnControlContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 4,
+    },
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#0d2143',
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#888',
+    },
+    headerButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    headerButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#e0e5ec',
+        borderRadius: 10,
+        padding: 4,
+        marginBottom: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#0d2143',
+        borderRadius: 8,
+        padding: 4,
+        marginVertical: 10,
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 6,
+    },
+    tabActive: { backgroundColor: '#0068A7' },
+    tabText: { color: '#ccc', fontWeight: '600' },
+    tabTextActive: { color: '#fff', fontWeight: '700' },
     listContainer: { flex: 1, marginTop: 15 },
-    searchInput: { backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginTop: 10, fontSize: 14, borderWidth: 1, borderColor: '#C4C4C4' },
-    card: { backgroundColor: '#ffffffcc', borderRadius: 10, padding: 15, marginBottom: 12 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    code: { backgroundColor: '#f8e9f8', color: '#C71585', fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, fontSize: 13 },
-    status: { fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, fontSize: 12, color: '#fff' },
+    searchInput: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginTop: 10,
+        fontSize: 14,
+        borderWidth: 1,
+        borderColor: '#C4C4C4',
+    },
+    card: {
+        backgroundColor: '#ccd3e9cc',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 12,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    code: {
+        backgroundColor: '#f8e9f8',
+        color: '#C71585',
+        fontWeight: 'bold',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        fontSize: 13,
+    },
+    status: {
+        fontWeight: 'bold',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        fontSize: 12,
+        color: '#fff',
+    },
     statusActive: { backgroundColor: '#28a745' },
     statusProgress: { backgroundColor: '#f0ad4e' },
-    cardBody: { marginTop: 10 },
     name: { fontSize: 16, fontWeight: 'bold', color: '#333' },
     yayasan: { fontSize: 13, color: '#007bff', marginTop: 3 },
     wilayah: { fontSize: 13, color: '#555', marginTop: 3 },
@@ -268,18 +593,96 @@ const styles = StyleSheet.create({
     cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 },
     actionButton: { borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
     actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#122E5F' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-    modalContainer: { backgroundColor: '#fff', borderRadius: 10, padding: 20, maxHeight: '80%', position: 'relative' },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
+    emptyText: { color: '#000', fontSize: 16, marginBottom: 10 },
+    addButton: {
+        backgroundColor: '#28a745',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+    },
+    addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 20,
+        maxHeight: '80%',
+        position: 'relative',
+    },
     modalCloseIcon: { position: 'absolute', top: 10, right: 10, zIndex: 10, padding: 5 },
     modalCloseIconText: { fontSize: 18, fontWeight: 'bold', color: '#122E5F' },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#122E5F' },
-    modalSearchInput: { borderWidth: 1, borderColor: '#C4C4C4', borderRadius: 8, padding: 8, marginBottom: 10, fontSize: 14 },
+    modalSearchInput: {
+        borderWidth: 1,
+        borderColor: '#C4C4C4',
+        borderRadius: 8,
+        padding: 8,
+        marginBottom: 10,
+        fontSize: 14,
+    },
     modalItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     modalItemText: { fontWeight: 'bold', color: '#000' },
     modalSubText: { color: '#555', fontSize: 12 },
-    modalCreateButton: { backgroundColor: '#0068A7', paddingVertical: 12, borderRadius: 8, marginTop: 10 },
-    modalCreateButtonText: { color: '#fff', fontWeight: 'bold', textAlign: 'center', fontSize: 16 },
+    modalSubTextSmall: { color: '#777', fontSize: 11 },
+    modalCreateButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginTop: 10,
+    },
+    modalCreateButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: 16,
+    },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#122E5F' },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center', // ⬅️ posisikan vertikal di tengah
+        alignItems: 'center',     // ⬅️ posisikan horizontal di tengah
+        paddingHorizontal: 20,
+        minHeight: 400,           // agar tetap di tengah meski list kecil
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: '#333',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    emptySubText: {
+        textAlign: 'center',
+        color: '#888',
+        fontSize: 13,
+        marginTop: 4,
+    },
+    syncContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginBottom: 10,
+    },
+    syncButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignSelf: 'flex-end',
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    syncButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
 });
 
 export default ConstructionReport;

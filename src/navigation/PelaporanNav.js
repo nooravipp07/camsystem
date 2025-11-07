@@ -18,7 +18,13 @@ const PelaporanNav = () => {
                 initialRouteName="ReportScreen"
                 screenOptions={{ headerShown: false}}
             >
-                <BuletinStack.Screen name="ReportScreen" component={ReportScreen} />
+                <BuletinStack.Screen 
+                    name="ReportScreen" 
+                    component={ReportScreen} 
+                    options={{
+                        headerShown: false,
+                        tabBarStyle: { display: 'none' },
+                    }} />
                 <BuletinStack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
                 <BuletinStack.Screen name="PDFViewer" component={PDFViewer} />
                 <BuletinStack.Screen name="ReportFormStep1" component={ReportFormStep1} />

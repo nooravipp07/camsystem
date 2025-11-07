@@ -36,7 +36,7 @@ const ReportScreen = ({ navigation }) => {
                 `${BASE_URL}/reports?perPage=50&page=1&search=&orderBy=created_at&sortBy=desc`,
                 {
                     headers: {
-                        Authorization: `Bearer ${JSON.parse(token)}`,
+                        Authorization: `Bearer ${token}`,
                     },
                 }
             );
@@ -132,7 +132,14 @@ const ReportScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.heading}>LAPORAN KEJADIAN</Text>
+            <View style={styles.header}>
+                <View>
+                    <Text style={styles.headerTitle}>Lap. Kejadian</Text>
+                </View>
+                <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('ReportFormStep1')}>
+                    <Text style={styles.headerButtonText}>＋ Tambah</Text>
+                </TouchableOpacity>
+            </View>
 
             <SafeAreaView style={styles.listContainer}>
                 <FlatList
@@ -148,35 +155,53 @@ const ReportScreen = ({ navigation }) => {
                         />
                     }
                     ListEmptyComponent={
-                        <Text style={styles.emptyText}>Belum ada laporan.</Text>
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>Tidak ada laporan kejadian.</Text>
+                            <Text style={styles.emptySubText}>
+                                Tekan tombol “＋ Tambah” di atas untuk membuat laporan baru.
+                            </Text>
+                        </View>
                     }
                 />
             </SafeAreaView>
-
-            <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => navigation.navigate('ReportFormStep1')}
-            >
-                <Text style={styles.addButtonText}>＋ Tambah Laporan</Text>
-            </TouchableOpacity>
         </View>
     );
 };
 
 // ===== STYLES =====
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 15,
-        backgroundColor: '#122E5F',
+    container: { flex: 1, padding: 15, backgroundColor: '#fff' },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
     },
-    heading: {
-        fontWeight: 'bold',
-        fontSize: 20,
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#0d2143',
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#888',
+    },
+    headerButton: {
+        backgroundColor: '#0068A7',
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    headerButtonText: {
         color: '#fff',
-        paddingBottom: 5,
-        borderBottomWidth: 1,
-        borderBottomColor: '#adbcb1',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
     listContainer: { flex: 1, marginTop: 15 },
     card: {
@@ -269,6 +294,25 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontStyle: 'italic',
         marginTop: 20,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center', // ⬅️ posisikan vertikal di tengah
+        alignItems: 'center',     // ⬅️ posisikan horizontal di tengah
+        paddingHorizontal: 20,
+        minHeight: 400,           // agar tetap di tengah meski list kecil
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: '#333',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    emptySubText: {
+        textAlign: 'center',
+        color: '#888',
+        fontSize: 13,
+        marginTop: 4,
     },
 });
 

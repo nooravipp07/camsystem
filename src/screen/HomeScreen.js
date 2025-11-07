@@ -17,7 +17,7 @@ import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 
 const HomeScreen = ({ navigation }) => {
 	const { userInfo, token } = useContext(AuthContext);
-	const user = JSON.parse(userInfo);
+	const user = userInfo;
 
 	const [reports, setReports] = useState([]);
 	const [news, setNews] = useState([]);
@@ -47,7 +47,7 @@ const HomeScreen = ({ navigation }) => {
 			const { data } = await axios.get(
 				`${BASE_URL}/reports?perPage=2&page=1&orderBy=created_at&sortBy=desc`,
 				{
-					headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+					headers: { Authorization: `Bearer ${token}` },
 				}
 			);
 			setReports(data.response.data || []);
@@ -61,7 +61,7 @@ const HomeScreen = ({ navigation }) => {
 			const { data } = await axios.get(
 				`${BASE_URL}/news?perPage=2&page=1&orderBy=date&sortBy=desc`,
 				{
-					headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+					headers: { Authorization: `Bearer ${token}` },
 				}
 			);
 			setNews(data.response.data || []);
@@ -121,7 +121,7 @@ const HomeScreen = ({ navigation }) => {
 					<MenuButton
 						label="Lap. Progres SPPG"
 						icon={require('../assets/Icons/pelaporan.png')}
-						onPress={() => navigation.navigate('Construction Report')}
+						onPress={() => navigation.navigate('Progres SPPG')}
 					/>
 					<MenuButton
 						label="Lap. Kejadian"

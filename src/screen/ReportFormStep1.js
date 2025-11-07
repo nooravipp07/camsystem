@@ -129,7 +129,7 @@ const ReportFormStep1 = ({ navigation }) => {
 		try {
 		const url = `${BASE_URL}/regional/list/provinces?perPage=35&page=1&search=`;
 		const res = await axios.get(url, {
-			headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+			headers: { Authorization: `Bearer ${token}` },
 		});
 		setProvList(res?.data?.response?.data || []);
 		} catch (err) {
@@ -145,7 +145,7 @@ const ReportFormStep1 = ({ navigation }) => {
 		try {
 		const url = `${BASE_URL}/regional/list/regency/${provinceId}?perPage=200&page=1&search=`;
 		const res = await axios.get(url, {
-			headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+			headers: { Authorization: `Bearer ${token}` },
 		});
 		setKabList(res?.data?.response?.data || []);
 		} catch (err) {
@@ -161,7 +161,7 @@ const ReportFormStep1 = ({ navigation }) => {
 		try {
 		const url = `${BASE_URL}/regional/list/district/${regencyId}?perPage=200&page=1&search=`;
 		const res = await axios.get(url, {
-			headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+			headers: { Authorization: `Bearer ${token}` },
 		});
 		setKecList(res?.data?.response?.data || []);
 		} catch (err) {
@@ -177,7 +177,7 @@ const ReportFormStep1 = ({ navigation }) => {
 		try {
 		const url = `${BASE_URL}/regional/list/villages/${districtId}?perPage=200&page=1&search=`;
 		const res = await axios.get(url, {
-			headers: { Authorization: `Bearer ${JSON.parse(token)}` },
+			headers: { Authorization: `Bearer ${token}` },
 		});
 		setKelList(res?.data?.response?.data || []);
 		} catch (err) {

@@ -36,7 +36,7 @@ const NewsScreen = ({ navigation }) => {
                 `${BASE_URL}/news?perPage=10&page=1&search=&orderBy=date&sortBy=desc`,
                 {
                     headers: {
-                        Authorization: `Bearer ${JSON.parse(token)}`,
+                        Authorization: `Bearer ${token}`,
                     },
                 }
             );
@@ -58,39 +58,39 @@ const NewsScreen = ({ navigation }) => {
     };
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() =>
-                navigation.navigate('NewsDetailScreen', { newsId: item.id })
-            }
-        >
-            <View style={styles.imageContainer}>
-                {item.thumbnail ? (
-                    <Image
-                        style={styles.image}
-                        source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
-                    />
-                ) : (
-                    <Image
-                        style={styles.image}
-                        source={require('../assets/Icons/kamera.png')}
-                    />
-                )}
-            </View>
+    <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+            navigation.navigate('NewsDetailScreen', { newsId: item.id })
+        }
+    >
+        {item.thumbnail ? (
+            <Image
+                style={styles.cardImage}
+                source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
+            />
+        ) : (
+            <Image
+                style={styles.cardImage}
+                source={require('../assets/Icons/kamera.png')}
+            />
+        )}
 
-            <View style={styles.textContainer}>
-                <View style={styles.rowBetween}>
-                    <Text style={styles.date}>
-                        {moment(item.date, 'YYYY-MM-DD').format('DD MMM YYYY')}
-                    </Text>
-                    <Text style={styles.author}>Admin</Text>
-                </View>
-                <Text style={styles.title} numberOfLines={2}>
-                    {item.title}
+        <View style={styles.cardContent}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+                {item.title}
+            </Text>
+
+            <View style={styles.cardMeta}>
+                <Text style={styles.cardDate}>
+                    {moment(item.date, 'YYYY-MM-DD').format('DD MMM YYYY')}
                 </Text>
+                <Text style={styles.cardAuthor}>Admin</Text>
             </View>
-        </TouchableOpacity>
-    );
+        </View>
+    </TouchableOpacity>
+);
+
 
     if (loading) {
         return (
@@ -104,15 +104,12 @@ const NewsScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Image
-                    style={styles.headerIcon}
-                    source={require('../assets/Icons/title.png')}
-                />
-                <Text style={styles.headerTitle}>Buletin Berita</Text>
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.headerTitle}>Buletin Berita</Text>
+                    </View>
+                </View>
             </View>
-
-            <Text style={styles.subTitle}>Daftar Berita Terkini</Text>
-
             <SafeAreaView style={styles.listContainer}>
                 <FlatList
                     data={news}
@@ -141,82 +138,57 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 15,
-        backgroundColor: '#122E5F',
+        backgroundColor: '#fff',
     },
     header: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#adbcb1',
-        paddingBottom: 5,
-    },
-    headerIcon: {
-        width: 35,
-        height: 35,
-        tintColor: '#ffffff',
-        marginRight: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
     },
     headerTitle: {
-        fontWeight: 'bold',
-        fontSize: 28,
-        color: '#ffffff',
-    },
-    subTitle: {
-        fontSize: 18,
-        color: '#ffffff',
-        fontWeight: '500',
-        marginTop: 10,
-        marginBottom: 15,
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#0d2143',
     },
     listContainer: {
         flex: 1,
     },
     card: {
-        flexDirection: 'row',
-        backgroundColor: '#ffffffcc',
+        backgroundColor: '#ccd3e9cc',
         borderRadius: 10,
-        padding: 10,
+        padding: 15,
         marginBottom: 12,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 3,
-        elevation: 3,
     },
-    imageContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 8,
-        overflow: 'hidden',
-        marginRight: 10,
-    },
-    image: {
+    cardImage: {
         width: '100%',
-        height: '100%',
+        height: 180,
         resizeMode: 'cover',
     },
-    textContainer: {
-        flex: 1,
-        flexDirection: 'column',
+    cardContent: {
+        paddingVertical: 10,
+        paddingHorizontal: 14,
     },
-    rowBetween: {
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#122E5F',
+        marginBottom: 6,
+    },
+    cardMeta: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 5,
+        alignItems: 'center',
     },
-    date: {
+    cardDate: {
         fontSize: 12,
         color: '#6c757d',
     },
-    author: {
+    cardAuthor: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#00aeef',
-    },
-    title: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        color: '#333',
+        color: '#007bff',
     },
     emptyText: {
         textAlign: 'center',

@@ -1,69 +1,96 @@
 import React, { createContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import EncryptedStorage from 'react-native-encrypted-storage';
 import axios from 'axios';
-
 import { BASE_URL } from '../config/Config';
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({children}) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [token, setToken] = useState(null);
-    const [userInfo, setUserInfo] = useState(null);
+export const AuthProvider = ({ children }) => {
+	const [userInfo, setUserInfo] = useState({});
+	const [token, setToken] = useState(null);
+	const [isLoading, setIsLoading] = useState(false);
+	const [splashLoading, setSplashLoading] = useState(false);
 
-    const login = async (username, password, imei) => {
-        setIsLoading(true);
-        await axios.post(`${BASE_URL}/authentication/login`, {
-            username, 
-            password, 
-            imei
-        })
-        .then(res => {
-            console.log(res.data);
-            let userInfo = AsyncStorage.setItem('userInfo', JSON.stringify(res.data.response.data));
-            let token = AsyncStorage.setItem('token', JSON.stringify(res.data.response.token));
+	const login = async (email, password) => {
+		setIsLoading(true);
+		try {
+			const res = await axios.post(`${BASE_URL}/authentication/login`, {
+				email,
+				password,
+			});
+			const { data } = res.data;
+			setUserInfo(data.user);
+			setToken(data.token);
+			await EncryptedStorage.setItem('userInfo', JSON.stringify(data.user));
+			await EncryptedStorage.setItem('token', data.token);
+		} catch (error) {
+			console.error(error);
+			const message = error.response?.data?.message || 'Login Gagal';
+			alert(message);
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
-            if( res.data.status == 200 ){
-                setToken(token);
-                setUserInfo(userInfo);
-            }
+	const logout = async () => {
+		setIsLoading(true);
+		try {
+			await axios.post(
+				`${BASE_URL}/authentication/logout`,
+				{},
+				{
+					headers: { Authorization: `Bearer ${token}` },
+				}
+			);
+			await EncryptedStorage.removeItem('userInfo');
+			await EncryptedStorage.removeItem('token');
+			setUserInfo({});
+			setToken(null);
+		} catch (error) {
+			console.error(error);
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
-            setIsLoading(false);
-        })
-        .catch(e => {
-            console.log(`Login error : ${e}`);
-        })
-    }
+	const checkAuthStatus = async () => {
+		try {
+			setSplashLoading(true);
+			const storedToken = await EncryptedStorage.getItem('token');
+			const storedUserInfo = await EncryptedStorage.getItem('userInfo');
 
-    const logout = () => {
-        setIsLoading(true);
-        setToken(null);
-        AsyncStorage.removeItem('userToken');
-        setIsLoading(false);
-    }
+			if (storedToken && storedUserInfo) {
+				setToken(storedToken);
+				setUserInfo(JSON.parse(storedUserInfo));
+			} else {
+				console.log('Tidak ada token, user harus login');
+			}
+		} catch (error) {
+			console.error('Gagal memuat data user', error);
+		} finally {
+			setSplashLoading(false);
+		}
+	};
 
-    const isLoggedIn = async () => {
-        try{
-            setIsLoading(true);
-            let userToken = await AsyncStorage.getItem('token');
-            let userInfo = await AsyncStorage.getItem('userInfo');
-            setIsLoading(false);
-        }catch(e) {
-            console.log(`isLogged in error ${e}`);
-        }
-    }
+	useEffect(() => {
+		checkAuthStatus();
+	}, []);
 
-    const updateProile = async (data) => {
-        await AsyncStorage.setItem('userInfo', JSON.stringify(data));
-    }
-
-    useEffect(() => {
-        isLoggedIn();
-    }, [token]);
-
-    return (
-        <AuthContext.Provider value={{ login, logout, isLoading, token, setToken, userInfo , setUserInfo}}>
-            {children}
-        </AuthContext.Provider>
-    );
-}
+	return (
+		<AuthContext.Provider
+			value={{
+				isLoading,
+				userInfo,
+				token,
+				splashLoading,
+				login,
+				logout,
+				setToken,
+				setUserInfo,
+				checkAuthStatus
+			}}
+		>
+			{children}
+		</AuthContext.Provider>
+	);
+};

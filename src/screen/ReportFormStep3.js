@@ -264,7 +264,7 @@ function ReportFormStep3({ navigation }) {
 			const response = await axios.post(`${BASE_URL}/reports/insert`, uploadData, {
 				headers: {
 					"Content-Type" : "multipart/form-data",
-					Authorization: `Bearer ${JSON.parse(token)}`,
+					Authorization: `Bearer ${token}`,
 				},
 			});
 
