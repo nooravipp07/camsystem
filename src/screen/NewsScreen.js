@@ -15,6 +15,8 @@ import axios from 'axios';
 import moment from 'moment';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 import { NewsContext } from '../context/NewsContext';
+import Icon from 'react-native-vector-icons/Ionicons';
+import SkeletonCard from '../components/SkeletonCard';
 
 const NewsScreen = ({ navigation }) => {
     const { token } = useContext(AuthContext);
@@ -58,56 +60,53 @@ const NewsScreen = ({ navigation }) => {
     };
 
     const renderItem = ({ item }) => (
-    <TouchableOpacity
-        style={styles.card}
-        onPress={() =>
-            navigation.navigate('NewsDetailScreen', { newsId: item.id })
-        }
-    >
-        {item.thumbnail ? (
-            <Image
-                style={styles.cardImage}
-                source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
-            />
-        ) : (
-            <Image
-                style={styles.cardImage}
-                source={require('../assets/Icons/kamera.png')}
-            />
-        )}
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() =>
+                navigation.navigate('NewsDetailScreen', { newsId: item.id })
+            }
+        >
+            {item.thumbnail ? (
+                <Image
+                    style={styles.cardImage}
+                    source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
+                />
+            ) : (
+                <Image
+                    style={styles.cardImage}
+                    source={require('../assets/Icons/kamera.png')}
+                />
+            )}
 
-        <View style={styles.cardContent}>
-            <Text style={styles.cardTitle} numberOfLines={2}>
-                {item.title}
-            </Text>
-
-            <View style={styles.cardMeta}>
-                <Text style={styles.cardDate}>
-                    {moment(item.date, 'YYYY-MM-DD').format('DD MMM YYYY')}
+            <View style={styles.cardContent}>
+                <Text style={styles.cardTitle} numberOfLines={2}>
+                    {item.title}
                 </Text>
-                <Text style={styles.cardAuthor}>Admin</Text>
+
+                <View style={styles.cardMeta}>
+                    <Text style={styles.cardDate}>
+                        {moment(item.date, 'YYYY-MM-DD').format('DD MMM YYYY')}
+                    </Text>
+                    <Text style={styles.cardAuthor}>Admin</Text>
+                </View>
             </View>
-        </View>
-    </TouchableOpacity>
-);
+        </TouchableOpacity>
+    );
 
 
     if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator color="#fff" size="large" />
-                <Text style={{ color: '#fff', marginTop: 10 }}>Memuat berita...</Text>
-            </View>
-        );
+        return <SkeletonCard count={5} />;
     }
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View style={styles.header}>
-                    <View>
-                        <Text style={styles.headerTitle}>Buletin Berita</Text>
-                    </View>
+                <View style={styles.headerLeftGroup}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Icon name="arrow-back-outline" size={24} color="#0d2143" />
+                    </TouchableOpacity>
+                        
+                    <Text style={styles.headerTitle}>Buletin Berita</Text>
                 </View>
             </View>
             <SafeAreaView style={styles.listContainer}>
@@ -144,7 +143,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+    },
+    headerLeftGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6, // jarak kecil antara icon & title
+    },
+    backButton: {
+        padding: 4,
+    },
+    backIcon: {
+        fontSize: 22,
+        color: '#0d2143',
+        fontWeight: 'bold',
+    },
+    btnControlContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
         paddingHorizontal: 4,
     },
     headerTitle: {

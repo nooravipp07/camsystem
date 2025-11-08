@@ -6,8 +6,8 @@ import {
 	StyleSheet,
 	SafeAreaView,
 	TouchableOpacity,
-	ImageBackground,
 	ScrollView,
+	FlatList,
 } from 'react-native';
 import axios from 'axios';
 import moment from 'moment';
@@ -16,222 +16,187 @@ import { AuthContext } from '../context/AuthContext';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
 
 const HomeScreen = ({ navigation }) => {
-	const { userInfo, token } = useContext(AuthContext);
+	const { userInfo } = useContext(AuthContext);
 	const user = userInfo;
-
 	const [reports, setReports] = useState([]);
 	const [news, setNews] = useState([]);
 	const [isConnected, setIsConnected] = useState(true);
+	const [stats, setStats] = useState([]);
 
 	useEffect(() => {
 		const unsubscribe = NetInfo.addEventListener(state => {
 			setIsConnected(state.isConnected);
 		});
 
-		const interval = setInterval(() => {
-			fetchNews();
-			fetchReports();
-		}, 10000);
+		// Dummy News
+		const dummyNews = [
+			{ id: 1, title: 'Pembangunan Jembatan Baru di Kodam III', date: '2025-11-01' },
+			{ id: 2, title: 'Latihan Gabungan TNI Sukses Digelar', date: '2025-11-02' },
+			{ id: 3, title: 'Kodam IV Gelar Donor Darah Massal', date: '2025-11-03' },
+			{ id: 4, title: 'Kegiatan Bakti Sosial di Bandung Raya', date: '2025-11-04' },
+			{ id: 5, title: 'Peringatan Hari Pahlawan di Makodam', date: '2025-11-05' },
+		];
 
-		fetchNews();
-		fetchReports();
+		// Dummy Statistik
+		const dummyStats = [
+			{
+				id: 1,
+				title: 'Dapur BIN',
+				items: [
+					{ label: 'Pembangunan', value: 12 },
+					{ label: 'Persiapan Running', value: 6 },
+					{ label: 'Running', value: 18 },
+					{ label: 'Terkendala', value: 3 },
+					{ label: 'Bermasalah', value: 1 },
+				],
+				color: '#2761A9',
+			},
+			{
+				id: 2,
+				title: 'Dapur APBN BGN',
+				items: [{ label: 'Total', value: 8 }],
+				color: '#F5B700',
+			},
+			{
+				id: 3,
+				title: 'Dapur Lain',
+				items: [{ label: 'Total', value: 5 }],
+				color: '#6BCB77',
+			},
+			{
+				id: 4,
+				title: 'Jumlah Dapur Bermasalah',
+				items: [{ label: 'Total', value: 4 }],
+				color: '#F44336',
+			},
+		];
 
-		return () => {
-			unsubscribe();
-			clearInterval(interval);
-		};
+		setNews(dummyNews);
+		setStats(dummyStats);
+		setReports([]);
+		return () => unsubscribe();
 	}, []);
 
-	const fetchReports = async () => {
-		try {
-			const { data } = await axios.get(
-				`${BASE_URL}/reports?perPage=2&page=1&orderBy=created_at&sortBy=desc`,
-				{
-					headers: { Authorization: `Bearer ${token}` },
-				}
-			);
-			setReports(data.response.data || []);
-		} catch (err) {
-			console.error('Failed to fetch reports:', err);
-		}
-	};
-
-	const fetchNews = async () => {
-		try {
-			const { data } = await axios.get(
-				`${BASE_URL}/news?perPage=2&page=1&orderBy=date&sortBy=desc`,
-				{
-					headers: { Authorization: `Bearer ${token}` },
-				}
-			);
-			setNews(data.response.data || []);
-		} catch (err) {
-			console.error('Failed to fetch news:', err);
-		}
-	};
-
 	return (
-		<ImageBackground
-			source={require('../assets/Images/bg.png')}
-			style={styles.imgBackground}
-		>
-			<ScrollView showsVerticalScrollIndicator={false}>
-				{/* Header */}
-				<View style={styles.headerContainer}>
-					<Text style={styles.headerTitle}>Dashboard</Text>
-					<View
-						style={[
-							styles.networkIndicator,
-							{ backgroundColor: isConnected ? '#4CAF50' : '#F44336' },
-						]}
-					>
-						<Text style={styles.networkText}>
-							{isConnected ? 'Online' : 'Offline'}
-						</Text>
-					</View>
+		<ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+			{/* Header */}
+			<View style={styles.headerContainer}>
+				<Text style={styles.headerTitle}>Dashboard</Text>
+				<View
+					style={[
+						styles.networkIndicator,
+						{ backgroundColor: isConnected ? '#6BCB77' : '#F44336' },
+					]}
+				>
+					<Text style={styles.networkText}>
+						{isConnected ? 'Online' : 'Offline'}
+					</Text>
 				</View>
+			</View>
 
-				{/* Welcome + Profile */}
-				<Text style={styles.welcomeText}>Selamat Datang</Text>
-				<View style={styles.profileContainer}>
-					<TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-						<Image
-							style={styles.profileImage}
-							source={
-								user?.avatar
-									? { uri: `${BASE_IMG_URL}${user.avatar}` }
-									: require('../assets/Icons/kamera.png')
-							}
-						/>
+			{/* Profile Section */}
+			<View style={styles.profileContainer}>
+				<TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+					<Image
+						style={styles.profileImage}
+						source={
+							user?.avatar
+								? { uri: `${BASE_IMG_URL}${user.avatar}` }
+								: require('../assets/Icons/kamera.png')
+						}
+					/>
+				</TouchableOpacity>
+				<View style={styles.profileInfo}>
+					<Text style={styles.profileName}>{user?.name}</Text>
+					<Text style={styles.profileSub}>{user?.kodam_name}</Text>
+					<Text style={styles.profileLocation}>{user?.regency_name}</Text>
+				</View>
+			</View>
+
+			{/* News Section */}
+			<SafeAreaView style={styles.sectionContainer}>
+				<View style={styles.sectionHeader}>
+					<Text style={styles.sectionTitle}>Buletin Berita</Text>
+					<TouchableOpacity onPress={() => navigation.navigate('Buletin Berita')}>
+						<Text style={styles.sectionMore}>Lihat Semua</Text>
 					</TouchableOpacity>
-					<View style={styles.profileInfo}>
-						<Text style={styles.profileName}>{user?.name}</Text>
-						<Text style={styles.profileSub}>{user?.kodam_name}</Text>
-						<Text style={styles.profileLocation}>{user?.regency_name}</Text>
-					</View>
 				</View>
 
-				{/* Menu Grid */}
-				<View style={styles.menuGrid}>
-					<MenuButton
-						label="Lap. Kerawanan"
-						icon={require('../assets/Icons/pelaporan.png')}
-						onPress={() => navigation.navigate('Pelaporan')}
-					/>
-					<MenuButton
-						label="Lap. Progres SPPG"
-						icon={require('../assets/Icons/pelaporan.png')}
-						onPress={() => navigation.navigate('Progres SPPG')}
-					/>
-					<MenuButton
-						label="Lap. Kejadian"
-						icon={require('../assets/Icons/pelaporan.png')}
-						onPress={() => navigation.navigate('Pelaporan')}
-					/>
-					<MenuButton
-						label="Lap. Harian"
-						icon={require('../assets/Icons/pelaporan.png')}
-						onPress={() => navigation.navigate('Pelaporan')}
-					/>
-					<MenuButton
-						label="Lap. Lain - lain"
-						icon={require('../assets/Icons/pelaporan.png')}
-						onPress={() => navigation.navigate('Pelaporan')}
-					/>
-				</View>
-
-				{/* News Section */}
-				<DataSection
-					title="Buletin Berita"
+				<FlatList
 					data={news}
-					onPress={() => navigation.navigate('Buletin Berita')}
-					renderItem={(val) => (
-						<View style={styles.itemRow}>
-							<View style={{ flex: 3 }}>
-								<View style={styles.itemMeta}>
-									<Text style={styles.itemDate}>
-										{moment(val.date).format('DD MMM YYYY')}
-									</Text>
-									<Text style={styles.itemAuthor}>Oleh: Admin</Text>
-								</View>
-								<Text style={styles.itemTitle} numberOfLines={2}>
-									{val.title}
+					keyExtractor={(item) => item.id.toString()}
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 10, paddingTop: 10 }}
+					renderItem={({ item }) => (
+						<View style={styles.newsCard}>
+							<Image
+								source={{
+									uri: 'https://picsum.photos/300/200?random=' + item.id,
+								}}
+								style={styles.newsImage}
+							/>
+							<View style={styles.newsContent}>
+								<Text style={styles.newsDate}>
+									{moment(item.date).format('DD MMM YYYY')}
 								</Text>
+								<Text style={styles.newsTitle} numberOfLines={2}>
+									{item.title}
+								</Text>
+								<TouchableOpacity
+									style={styles.readMoreBtn}
+									onPress={() => navigation.navigate('Buletin Berita')}
+								>
+									<Text style={styles.readMoreText}>Baca Selengkapnya</Text>
+								</TouchableOpacity>
 							</View>
 						</View>
 					)}
 				/>
+			</SafeAreaView>
 
-				{/* Reports Section */}
-				<DataSection
-					title="Pelaporan"
-					data={reports}
-					onPress={() => navigation.navigate('Pelaporan')}
-					renderItem={(val) => (
-						<View style={styles.itemRow}>
-							<View style={{ flex: 3 }}>
-								<View style={styles.itemMeta}>
-									<Text style={styles.itemDate}>
-										{moment(val.date).format('DD MMM YYYY')}
-									</Text>
-									<Text style={styles.itemAuthor}>
-										{val.hour?.substring(0, 5)}
-									</Text>
+			{/* Statistik Section */}
+			<SafeAreaView style={[styles.sectionContainer , { marginBottom: 110 }]}>
+				<View style={styles.sectionHeader}>
+					<Text style={styles.sectionTitle}>Statistik Dapur</Text>
+				</View>
+
+				<View style={styles.statsGrid}>
+					{stats.map((item) => (
+						<View key={item.id} style={[styles.statCard, { borderLeftColor: item.color }]}>
+							<Text style={[styles.statTitle, { color: item.color }]}>{item.title}</Text>
+							{item.items.map((sub, i) => (
+								<View key={i} style={styles.statRow}>
+									<Text style={styles.statLabel}>{sub.label}</Text>
+									<Text style={styles.statValue}>{sub.value}</Text>
 								</View>
-								<Text style={styles.itemTitle} numberOfLines={2}>
-									{val.desc}
-								</Text>
-							</View>
+							))}
 						</View>
-					)}
-				/>
-			</ScrollView>
-		</ImageBackground>
+					))}
+				</View>
+			</SafeAreaView>
+		</ScrollView>
 	);
 };
 
-/* ---------- Sub Components ---------- */
-const MenuButton = ({ label, icon, onPress }) => (
-	<TouchableOpacity style={styles.menuItem} onPress={onPress}>
-		<Image source={icon} style={styles.menuIcon} />
-		<Text style={styles.menuLabel}>{label}</Text>
-	</TouchableOpacity>
-);
-
-const DataSection = ({ title, data, onPress, renderItem }) => (
-	<SafeAreaView style={styles.sectionContainer}>
-		<View style={styles.sectionHeader}>
-			<Text style={styles.sectionTitle}>{title}</Text>
-			<TouchableOpacity onPress={onPress}>
-				<Text style={styles.sectionMore}>Lihat Semua</Text>
-			</TouchableOpacity>
-		</View>
-		{data.map((item, idx) => (
-			<View key={idx}>{renderItem(item)}</View>
-		))}
-	</SafeAreaView>
-);
-
-/* ---------- Styles ---------- */
 const styles = StyleSheet.create({
-	imgBackground: {
+	container: {
 		flex: 1,
+		backgroundColor: '#FFFFFF',
 		padding: 16,
-		backgroundColor: '#0c1a13',
 	},
 	headerContainer: {
-		borderBottomWidth: 1,
-		borderBottomColor: '#adbcb1',
-		paddingBottom: 6,
-		marginBottom: 10,
 		flexDirection: 'row',
-		alignItems: 'center',
 		justifyContent: 'space-between',
+		alignItems: 'center',
+		paddingBottom: 8,
+		borderBottomWidth: 3,
+		borderBottomColor: '#F5B700',
 	},
 	headerTitle: {
-		fontSize: 32,
+		fontSize: 28,
 		fontWeight: 'bold',
-		color: '#fff',
+		color: '#2761A9',
 	},
 	networkIndicator: {
 		paddingHorizontal: 10,
@@ -246,84 +211,111 @@ const styles = StyleSheet.create({
 	welcomeText: {
 		fontSize: 22,
 		fontWeight: '600',
-		color: '#fff',
+		color: '#333',
 		marginVertical: 10,
 	},
 	profileContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingVertical: 10,
-		borderBottomWidth: 2,
-		borderBottomColor: '#2761a9',
-		marginBottom: 16,
+		backgroundColor: '#EAF4FF',
+		padding: 10,
+		borderRadius: 12,
+		marginTop: 15,
+		marginBottom: 15,
+		borderWidth: 1,
+		borderColor: '#CFE3FF',
 	},
 	profileImage: {
 		width: 70,
 		height: 70,
 		borderRadius: 10,
-		borderColor: '#2761a9',
+		borderColor: '#2761A9',
 		borderWidth: 2,
 		marginRight: 12,
 	},
 	profileInfo: { flex: 1 },
-	profileName: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-	profileSub: { color: '#fff', fontSize: 15 },
-	profileLocation: { color: '#fff', fontSize: 14 },
-	menuGrid: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		justifyContent: 'flex-start',
-		columnGap: 18,
-		rowGap: 10,
-		marginBottom: 16,
-	},
-	menuItem: {
-		width: '30%',
-		backgroundColor: '#ffffffcc',
-		borderRadius: 12,
-		alignItems: 'center',
-		paddingVertical: 15,
-	},
-	menuIcon: {
-		width: 45,
-		height: 45,
-		tintColor: '#2761a9',
-		marginBottom: 5,
-	},
-	menuLabel: {
-		fontSize: 13,
-		fontWeight: '600',
-		color: '#29352e',
-		textAlign: 'center',
-	},
+	profileName: { color: '#2761A9', fontSize: 18, fontWeight: 'bold' },
+	profileSub: { color: '#333', fontSize: 14 },
+	profileLocation: { color: '#777', fontSize: 14 },
+
 	sectionContainer: {
-		backgroundColor: '#fff',
-		borderRadius: 8,
+		backgroundColor: '#FFFFFF',
+		borderRadius: 10,
 		marginBottom: 16,
-		overflow: 'hidden',
+		borderWidth: 1,
+		borderColor: '#E3E3E3',
 	},
 	sectionHeader: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
-		backgroundColor: '#2761a9',
+		backgroundColor: '#2761A9',
 		padding: 10,
 	},
 	sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-	sectionMore: { fontSize: 16, color: '#fff', fontWeight: '500' },
-	itemRow: {
-		flexDirection: 'row',
-		padding: 10,
-		borderTopWidth: 1,
-		borderColor: '#2761a933',
+	sectionMore: { fontSize: 16, color: '#F5B700', fontWeight: '500' },
+
+	newsCard: {
+		width: 260,
+		backgroundColor: '#FFFFFF',
+		borderRadius: 10,
+		marginRight: 15,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.15,
+		shadowRadius: 4,
+		elevation: 3,
+		borderBottomWidth: 4,
+		borderBottomColor: '#F5B700',
 	},
-	itemMeta: {
+	newsImage: {
+		width: '100%',
+		height: 140,
+		borderTopLeftRadius: 10,
+		borderTopRightRadius: 10,
+	},
+	newsContent: { padding: 10 },
+	newsDate: { fontSize: 12, color: '#777', marginBottom: 5 },
+	newsTitle: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 10 },
+	readMoreBtn: {
+		backgroundColor: '#6BCB77',
+		paddingVertical: 6,
+		borderRadius: 6,
+		alignSelf: 'flex-start',
+		paddingHorizontal: 10,
+	},
+	readMoreText: { color: '#fff', fontSize: 13, fontWeight: '500' },
+
+	// Statistik
+	statsGrid: {
+		flexDirection: 'column',
+		padding: 12,
+	},
+	statCard: {
+		backgroundColor: '#F9F9F9',
+		borderRadius: 10,
+		padding: 12,
+		marginBottom: 12,
+		borderLeftWidth: 6,
+	},
+	statTitle: {
+		fontSize: 16,
+		fontWeight: 'bold',
+		marginBottom: 6,
+	},
+	statRow: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
-		marginBottom: 4,
+		paddingVertical: 2,
 	},
-	itemDate: { color: '#a7a9ac', fontSize: 13 },
-	itemAuthor: { color: '#2761a9', fontSize: 13 },
-	itemTitle: { color: '#333', fontWeight: '600', fontSize: 14 },
+	statLabel: {
+		color: '#555',
+		fontSize: 14,
+	},
+	statValue: {
+		fontWeight: 'bold',
+		color: '#333',
+		fontSize: 14,
+	},
 });
 
 export default HomeScreen;

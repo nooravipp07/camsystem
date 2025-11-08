@@ -48,7 +48,9 @@
     "react-native-screens": "^3.22.0",
     "react-native-signature-canvas": "^5.0.1",
     "react-native-signature-capture": "^0.4.12",
+    "react-native-skeleton-content": "^1.0.28",
     "react-native-sqlite-storage": "^6.0.1",
+    "react-native-vector-icons": "^10.3.0",
     "react-native-video": "^5.2.1",
     "react-native-webview": "^13.2.2"
   },

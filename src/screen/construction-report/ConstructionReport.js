@@ -17,6 +17,8 @@ import { BASE_URL } from '../../config/Config';
 import { getOfflineReports, deleteReport } from '../../utils/db';
 import { sendOfflineReports } from '../../utils/offlineSync';
 import NetInfo from '@react-native-community/netinfo';
+import Icon from 'react-native-vector-icons/Ionicons';
+import SkeletonCard from '../../components/SkeletonCard';
 
 const ConstructionReport = ({ navigation }) => {
     const { token } = useContext(AuthContext);
@@ -302,23 +304,19 @@ const ConstructionReport = ({ navigation }) => {
 
     // === UI ===
     if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator color="#fff" size="large" />
-                <Text style={{ color: '#fff', marginTop: 10 }}>Loading reports...</Text>
-            </View>
-        );
+        return <SkeletonCard count={5} />;
     }
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View>
+                <View style={styles.headerLeftGroup}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Icon name="arrow-back-outline" size={24} color="#0d2143" />
+                    </TouchableOpacity>
+
                     <Text style={styles.headerTitle}>Lap. Progress SPPG</Text>
                 </View>
-                {/* <TouchableOpacity style={styles.headerButton} onPress={handleSearchClick}>
-                    <Text style={styles.headerButtonText}>＋ Tambah</Text>
-                </TouchableOpacity> */}
             </View>
 
             {/* TAB SWITCHER */}
@@ -373,7 +371,7 @@ const ConstructionReport = ({ navigation }) => {
             </View>
 
             {/* LIST */}
-            <SafeAreaView style={styles.listContainer}>
+            <SafeAreaView style={ [styles.listContainer , { marginBottom: 70 }]}>
                 {activeTab === 'online' ? (
                     reports.length === 0 ? (
                         <View style={styles.emptyContainer}>
@@ -483,9 +481,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 4,
+    },
+    headerLeftGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6, // jarak kecil antara icon & title
+    },
+    backButton: {
+        padding: 4,
+    },
+    backIcon: {
+        fontSize: 22,
+        color: '#0d2143',
+        fontWeight: 'bold',
     },
     btnControlContainer: {
         flexDirection: 'row',
@@ -625,6 +633,7 @@ const styles = StyleSheet.create({
         padding: 8,
         marginBottom: 10,
         fontSize: 14,
+        color: '#000',
     },
     modalItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     modalItemText: { fontWeight: 'bold', color: '#000' },
@@ -682,7 +691,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 14,
-    },
+    }
 });
 
 export default ConstructionReport;

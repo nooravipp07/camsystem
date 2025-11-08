@@ -8,13 +8,15 @@ import {
     SafeAreaView,
     TouchableOpacity,
     RefreshControl,
-    ActivityIndicator,
+    ScrollView,
 } from 'react-native';
 import axios from 'axios';
 import moment from 'moment';
 import { AuthContext } from '../context/AuthContext';
 import { ReportContext } from '../context/ReportContext';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
+import Icon from 'react-native-vector-icons/Ionicons';
+import SkeletonCard from '../components/SkeletonCard';
 
 const ReportScreen = ({ navigation }) => {
     const { token } = useContext(AuthContext);
@@ -119,21 +121,18 @@ const ReportScreen = ({ navigation }) => {
         );
     };
 
+    // === Show Skeleton ===
     if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator color="#fff" size="large" />
-                <Text style={{ color: '#fff', marginTop: 10 }}>
-                    Memuat laporan...
-                </Text>
-            </View>
-        );
+        return <SkeletonCard count={5} />;
     }
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View>
+                <View style={styles.headerLeftGroup}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Icon name="arrow-back-outline" size={24} color="#0d2143" />
+                    </TouchableOpacity>
                     <Text style={styles.headerTitle}>Lap. Kejadian</Text>
                 </View>
                 <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('ReportFormStep1')}>
@@ -171,23 +170,10 @@ const ReportScreen = ({ navigation }) => {
 // ===== STYLES =====
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 15, backgroundColor: '#fff' },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#0d2143',
-    },
-    headerSubtitle: {
-        fontSize: 12,
-        color: '#888',
-    },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerLeftGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    backButton: { padding: 4 },
+    headerTitle: { fontSize: 22, fontWeight: '700', color: '#0d2143' },
     headerButton: {
         backgroundColor: '#0068A7',
         paddingVertical: 6,
@@ -198,122 +184,25 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
         elevation: 3,
     },
-    headerButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
+    headerButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
     listContainer: { flex: 1, marginTop: 15 },
-    card: {
-        backgroundColor: '#ffffffcc',
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 12,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    code: {
-        backgroundColor: '#e6f0ff',
-        color: '#0068A7',
-        fontWeight: 'bold',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-        fontSize: 13,
-    },
-    status: {
-        backgroundColor: '#17a2b8',
-        color: '#fff',
-        fontWeight: 'bold',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-        fontSize: 12,
-    },
+    card: { backgroundColor: '#ffffffcc', borderRadius: 10, padding: 15, marginBottom: 12 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    code: { backgroundColor: '#e6f0ff', color: '#0068A7', fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, fontSize: 13 },
+    status: { backgroundColor: '#17a2b8', color: '#fff', fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, fontSize: 12 },
     cardBody: { marginTop: 10 },
     row: { flexDirection: 'row', marginBottom: 5 },
     label: { fontWeight: 'bold', color: '#333', width: 70 },
     value: { color: '#333' },
-    description: {
-        fontSize: 13,
-        color: '#333',
-        marginTop: 10,
-        fontStyle: 'italic',
-    },
-    imageWrapper: {
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    image: {
-        width: 150,
-        height: 150,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ccc',
-    },
-    cardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        marginTop: 10,
-        gap: 10,
-    },
-    actionButton: {
-        borderRadius: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-    },
-    actionText: {
-        color: '#fff',
-        fontWeight: '600',
-        fontSize: 13,
-    },
-    addButton: {
-        backgroundColor: '#0068A7',
-        paddingVertical: 14,
-        borderRadius: 8,
-        marginTop: 15,
-        marginBottom: 80
-    },
-    addButtonText: {
-        textAlign: 'center',
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#122E5F',
-    },
-    emptyText: {
-        textAlign: 'center',
-        color: '#fff',
-        fontStyle: 'italic',
-        marginTop: 20,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center', // ⬅️ posisikan vertikal di tengah
-        alignItems: 'center',     // ⬅️ posisikan horizontal di tengah
-        paddingHorizontal: 20,
-        minHeight: 400,           // agar tetap di tengah meski list kecil
-    },
-    emptyText: {
-        textAlign: 'center',
-        color: '#333',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    emptySubText: {
-        textAlign: 'center',
-        color: '#888',
-        fontSize: 13,
-        marginTop: 4,
-    },
+    description: { fontSize: 13, color: '#333', marginTop: 10, fontStyle: 'italic' },
+    imageWrapper: { alignItems: 'center', marginTop: 10 },
+    image: { width: 150, height: 150, borderRadius: 8, borderWidth: 1, borderColor: '#ccc' },
+    cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 },
+    actionButton: { borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
+    actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, minHeight: 400 },
+    emptyText: { textAlign: 'center', color: '#333', fontSize: 15, fontWeight: '600' },
+    emptySubText: { textAlign: 'center', color: '#888', fontSize: 13, marginTop: 4 },
 });
 
 export default ReportScreen;

@@ -6,91 +6,92 @@ import { BASE_URL } from '../config/Config';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-	const [userInfo, setUserInfo] = useState({});
-	const [token, setToken] = useState(null);
-	const [isLoading, setIsLoading] = useState(false);
-	const [splashLoading, setSplashLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [token, setToken] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [splashLoading, setSplashLoading] = useState(true); // default true
 
-	const login = async (email, password) => {
-		setIsLoading(true);
-		try {
-			const res = await axios.post(`${BASE_URL}/authentication/login`, {
-				email,
-				password,
-			});
-			const { data } = res.data;
-			setUserInfo(data.user);
-			setToken(data.token);
-			await EncryptedStorage.setItem('userInfo', JSON.stringify(data.user));
-			await EncryptedStorage.setItem('token', data.token);
-		} catch (error) {
-			console.error(error);
-			const message = error.response?.data?.message || 'Login Gagal';
-			alert(message);
-		} finally {
-			setIsLoading(false);
-		}
-	};
+  // Login
+  const login = async (email, password) => {
+    setIsLoading(true);
+    try {
+      const res = await axios.post(`${BASE_URL}/authentication/login`, {
+        email,
+        password,
+      });
+      const { data } = res.data;
+      setUserInfo(data.user);
+      setToken(data.token);
 
-	const logout = async () => {
-		setIsLoading(true);
-		try {
-			await axios.post(
-				`${BASE_URL}/authentication/logout`,
-				{},
-				{
-					headers: { Authorization: `Bearer ${token}` },
-				}
-			);
-			await EncryptedStorage.removeItem('userInfo');
-			await EncryptedStorage.removeItem('token');
-			setUserInfo({});
-			setToken(null);
-		} catch (error) {
-			console.error(error);
-		} finally {
-			setIsLoading(false);
-		}
-	};
+      await EncryptedStorage.setItem('userInfo', JSON.stringify(data.user));
+      await EncryptedStorage.setItem('token', data.token);
+    } catch (error) {
+      console.error(error);
+      const message = error.response?.data?.message || 'Login Gagal';
+      alert(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-	const checkAuthStatus = async () => {
-		try {
-			setSplashLoading(true);
-			const storedToken = await EncryptedStorage.getItem('token');
-			const storedUserInfo = await EncryptedStorage.getItem('userInfo');
+  // Logout
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await axios.post(
+        `${BASE_URL}/authentication/logout`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      await EncryptedStorage.removeItem('userInfo');
+      await EncryptedStorage.removeItem('token');
+      setUserInfo(null);
+      setToken(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-			if (storedToken && storedUserInfo) {
-				setToken(storedToken);
-				setUserInfo(JSON.parse(storedUserInfo));
-			} else {
-				console.log('Tidak ada token, user harus login');
-			}
-		} catch (error) {
-			console.error('Gagal memuat data user', error);
-		} finally {
-			setSplashLoading(false);
-		}
-	};
+  // Cek token saat app start
+  const checkAuthStatus = async () => {
+    try {
+      const storedToken = await EncryptedStorage.getItem('token');
+      const storedUserInfo = await EncryptedStorage.getItem('userInfo');
 
-	useEffect(() => {
-		checkAuthStatus();
-	}, []);
+      if (storedToken && storedUserInfo) {
+        setToken(storedToken);
+        setUserInfo(JSON.parse(storedUserInfo));
+      } else {
+        console.log('Tidak ada token, user harus login');
+      }
+    } catch (error) {
+      console.error('Gagal memuat data user', error);
+    } finally {
+      setSplashLoading(false); // selesai loading splash
+    }
+  };
 
-	return (
-		<AuthContext.Provider
-			value={{
-				isLoading,
-				userInfo,
-				token,
-				splashLoading,
-				login,
-				logout,
-				setToken,
-				setUserInfo,
-				checkAuthStatus
-			}}
-		>
-			{children}
-		</AuthContext.Provider>
-	);
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        userInfo,
+        token,
+        isLoading,
+        splashLoading,
+        login,
+        logout,
+        setToken,
+        setUserInfo,
+        checkAuthStatus,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

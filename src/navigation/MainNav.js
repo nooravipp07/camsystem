@@ -117,13 +117,6 @@ function MainNav() {
           style={{
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: focused ? '#fff' : 'transparent',
-            padding: focused ? 10 : 0,
-            borderRadius: 20,
-            shadowColor: '#000',
-            shadowOpacity: 0.2,
-            shadowRadius: 5,
-            elevation: focused ? 6 : 0,
           }}
         >
           <Image
@@ -131,13 +124,13 @@ function MainNav() {
             style={{
               width: focused ? 28 : 22,
               height: focused ? 28 : 22,
-              tintColor: focused ? '#122E5F' : '#ffffffcc',
+              tintColor: focused ? '#F5B700' : '#ffffffcc',
             }}
           />
           {focused && (
             <Text
               style={{
-                color: '#122E5F',
+                color: '#F5B700',
                 fontSize: 11,
                 marginTop: 4,
                 fontWeight: '600',
