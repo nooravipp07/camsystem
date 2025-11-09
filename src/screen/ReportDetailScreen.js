@@ -32,7 +32,7 @@ const ReportDetailScreen = ({route, navigation}) => {
 			try {
 				const response = await axios.get(`${BASE_URL}/reports/${reportId}`, {
 					headers: {
-						Authorization: `Bearer ${JSON.parse(token)}`,
+						Authorization: `Bearer ${token}`,
 					},
 				});
 

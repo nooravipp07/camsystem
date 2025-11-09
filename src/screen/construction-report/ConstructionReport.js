@@ -37,30 +37,61 @@ const ConstructionReport = ({ navigation }) => {
 
     const [syncing, setSyncing] = useState(false);
 
+    // === PAGINATION STATES ===
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+
     useEffect(() => {
-        getReports();
+        getReports(1, true); // fetch halaman pertama
         getOfflineData();
-        const interval = setInterval(() => getReports(), 20000);
+        const interval = setInterval(() => getReports(1, true), 50000);
         return () => clearInterval(interval);
     }, []);
 
-    // === FETCH ONLINE REPORTS ===
-    const getReports = async () => {
+    // === FETCH ONLINE REPORTS (dengan pagination support) ===
+    const getReports = async (pageNumber = 1, replace = false) => {
         try {
+            if (pageNumber === 1) setLoading(true);
+
             const response = await axios.get(
-                `${BASE_URL}/progres-sppg?perPage=10&page=1&search=&orderBy=date&sortBy=desc`,
+                `${BASE_URL}/progres-sppg?perPage=10&page=${pageNumber}&search=&orderBy=date&sortBy=desc`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
+
             const data = response?.data?.response?.data ?? [];
-            setReports(data);
+
+            if (replace) {
+                setReports(data);
+            } else {
+                setReports((prev) => [...prev, ...data]);
+            }
+
+            if (data.length < 10) {
+                setHasMore(false);
+            } else {
+                setHasMore(true);
+            }
+
         } catch (error) {
             console.error('Error fetching reports:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
+            setLoadingMore(false);
         }
+    };
+
+    // === LAZY LOAD / LOAD MORE ===
+    const loadMoreReports = async () => {
+        if (loadingMore || !hasMore || activeTab !== 'online') return;
+
+        setLoadingMore(true);
+        const nextPage = page + 1;
+        await getReports(nextPage);
+        setPage(nextPage);
     };
 
     // === FETCH OFFLINE DATA ===
@@ -116,9 +147,9 @@ const ConstructionReport = ({ navigation }) => {
     const handleRefresh = async () => {
         if (refreshing) return;
         setRefreshing(true);
-        await getReports();
+        setPage(1);
+        await getReports(1, true);
         await getOfflineData();
-        setRefreshing(false);
     };
 
     const handleSearchClick = () => {
@@ -139,9 +170,7 @@ const ConstructionReport = ({ navigation }) => {
         setFilteredSPPG(filtered);
     };
 
-    const handleSelectSPPG = (item) => {
-        setSelectedSPPG(item);
-    };
+    const handleSelectSPPG = (item) => setSelectedSPPG(item);
 
     const handleCreateReport = () => {
         if (!selectedSPPG) {
@@ -188,8 +217,6 @@ const ConstructionReport = ({ navigation }) => {
     const formatDateTime = (dateString) => {
         if (!dateString) return '-';
         const date = new Date(dateString);
-
-        // Format lokal Indonesia
         return date.toLocaleString('id-ID', {
             day: '2-digit',
             month: 'short',
@@ -199,7 +226,6 @@ const ConstructionReport = ({ navigation }) => {
         });
     };
 
-    // === RENDER ONLINE REPORT CARD ===
     const renderOnlineItem = ({ item }) => (
         <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -215,7 +241,6 @@ const ConstructionReport = ({ navigation }) => {
                     {formatDateTime(item.created_at)}
                 </Text>
             </View>
-
             <View style={styles.cardBody}>
                 <Text style={styles.name}>
                     Dari: {item.report_from} → {item.report_to}
@@ -244,14 +269,11 @@ const ConstructionReport = ({ navigation }) => {
         </View>
     );
 
-    // === RENDER OFFLINE REPORT CARD ===
     const renderOfflineItem = ({ item }) => (
         <View style={[styles.card, { backgroundColor: '#ccd3e9cc' }]}>
             <View style={styles.cardHeader}>
                 <Text style={styles.code}>#D-{item.dbId}</Text>
-                <Text style={[styles.status, { backgroundColor: '#ff9800' }]}>
-                    DRAFT
-                </Text>
+                <Text style={[styles.status, { backgroundColor: '#ff9800' }]}>DRAFT</Text>
             </View>
 
             <View style={styles.cardBody}>
@@ -302,24 +324,21 @@ const ConstructionReport = ({ navigation }) => {
         </View>
     );
 
-    // === UI ===
-    if (loading) {
-        return <SkeletonCard count={5} />;
-    }
+    if (loading) return <SkeletonCard count={5} />;
 
     return (
         <View style={styles.container}>
+            {/* === HEADER === */}
             <View style={styles.header}>
                 <View style={styles.headerLeftGroup}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-back-outline" size={24} color="#0d2143" />
+                        <Icon name="arrow-back-outline" size={24} color="#0d2143" />
                     </TouchableOpacity>
-
-                    <Text style={styles.headerTitle}>Lap. Progress SPPG</Text>
+                    <Text style={styles.headerTitle}>Lap. Progres SPPG</Text>
                 </View>
             </View>
 
-            {/* TAB SWITCHER */}
+            {/* === TAB SWITCHER === */}
             <View style={styles.tabContainer}>
                 <TouchableOpacity
                     style={[styles.tabButton, activeTab === 'online' && styles.tabActive]}
@@ -353,25 +372,25 @@ const ConstructionReport = ({ navigation }) => {
                 </TouchableOpacity>
             </View>
 
+            {/* === SYNC & ADD BUTTON === */}
             <View style={styles.btnControlContainer}>
-                <View style={styles.syncContainer}>
-                    <TouchableOpacity
-                        style={[styles.syncButton, syncing && { backgroundColor: '#999' }]}
-                        onPress={() => handleSyncOfflineData(token)}
-                        disabled={syncing}
-                    >
-                        <Text style={styles.syncButtonText}>
-                            {syncing ? '⏳ Mengirim...' : '🔄 Sync Data'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={[styles.syncButton, syncing && { backgroundColor: '#999' }]}
+                    onPress={() => handleSyncOfflineData(token)}
+                    disabled={syncing}
+                >
+                    <Text style={styles.syncButtonText}>
+                        {syncing ? '⏳ Mengirim...' : '🔄 Sync Data'}
+                    </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.headerButton} onPress={handleSearchClick}>
-                    <Text style={styles.headerButtonText}>＋ Tambah</Text>
+                    <Text style={styles.headerButtonText}>＋ Update Progres</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* LIST */}
-            <SafeAreaView style={ [styles.listContainer , { marginBottom: 70 }]}>
+            {/* === LIST === */}
+            <SafeAreaView style={[styles.listContainer, { marginBottom: 70 }]}>
                 {activeTab === 'online' ? (
                     reports.length === 0 ? (
                         <View style={styles.emptyContainer}>
@@ -395,14 +414,23 @@ const ConstructionReport = ({ navigation }) => {
                                     colors={['#0068A7']}
                                 />
                             }
+                            onEndReached={loadMoreReports}
+                            onEndReachedThreshold={0.2}
+                            ListFooterComponent={
+                                loadingMore ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color="#0068A7"
+                                        style={{ marginVertical: 10 }}
+                                    />
+                                ) : null
+                            }
                         />
                     )
                 ) : offlineReports.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <Text style={styles.emptyText}>Tidak ada draft offline</Text>
                     </View>
-
-                    
                 ) : (
                     <FlatList
                         data={offlineReports}
@@ -412,7 +440,7 @@ const ConstructionReport = ({ navigation }) => {
                 )}
             </SafeAreaView>
 
-            {/* MODAL */}
+            {/* === SEARCH MODAL === */}
             <Modal
                 visible={searchModalVisible}
                 transparent={true}
@@ -428,7 +456,7 @@ const ConstructionReport = ({ navigation }) => {
                             <Text style={styles.modalCloseIconText}>✕</Text>
                         </TouchableOpacity>
 
-                        <Text style={styles.modalTitle}>Pilih ID SPPG</Text>
+                        <Text style={styles.modalTitle}>Update Progres SPPG</Text>
                         <TextInput
                             style={styles.modalSearchInput}
                             placeholder="Cari ID / Nama proyek / Code..."
@@ -455,7 +483,9 @@ const ConstructionReport = ({ navigation }) => {
                                     >
                                         <Text style={styles.modalItemText}>{item.code}</Text>
                                         <Text style={styles.modalSubText}>{item.name}</Text>
-                                        <Text style={styles.modalSubTextSmall}>{item.address}</Text>
+                                        <Text style={styles.modalSubTextSmall}>
+                                            {item.address}
+                                        </Text>
                                     </TouchableOpacity>
                                 )}
                             />
@@ -474,224 +504,54 @@ const ConstructionReport = ({ navigation }) => {
     );
 };
 
-// === STYLES ===
+// === STYLES === (tetap seperti sebelumnya)
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 15, backgroundColor: '#fff' },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    headerLeftGroup: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6, // jarak kecil antara icon & title
-    },
-    backButton: {
-        padding: 4,
-    },
-    backIcon: {
-        fontSize: 22,
-        color: '#0d2143',
-        fontWeight: 'bold',
-    },
-    btnControlContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 4,
-        paddingHorizontal: 4,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#0d2143',
-    },
-    headerSubtitle: {
-        fontSize: 12,
-        color: '#888',
-    },
-    headerButton: {
-        backgroundColor: '#0068A7',
-        paddingVertical: 6,
-        paddingHorizontal: 14,
-        borderRadius: 8,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    headerButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#e0e5ec',
-        borderRadius: 10,
-        padding: 4,
-        marginBottom: 10,
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#0d2143',
-        borderRadius: 8,
-        padding: 4,
-        marginVertical: 10,
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderRadius: 6,
-    },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerLeftGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    backButton: { padding: 4 },
+    headerTitle: { fontSize: 22, fontWeight: '700', color: '#0d2143' },
+    tabContainer: { flexDirection: 'row', backgroundColor: '#0d2143', borderRadius: 8, padding: 4, marginVertical: 10 },
+    tabButton: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
     tabActive: { backgroundColor: '#0068A7' },
     tabText: { color: '#ccc', fontWeight: '600' },
     tabTextActive: { color: '#fff', fontWeight: '700' },
-    listContainer: { flex: 1, marginTop: 15 },
-    searchInput: {
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginTop: 10,
-        fontSize: 14,
-        borderWidth: 1,
-        borderColor: '#C4C4C4',
-    },
-    card: {
-        backgroundColor: '#ccd3e9cc',
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 12,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    code: {
-        backgroundColor: '#f8e9f8',
-        color: '#C71585',
-        fontWeight: 'bold',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-        fontSize: 13,
-    },
-    status: {
-        fontWeight: 'bold',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-        fontSize: 12,
-        color: '#fff',
-    },
-    statusActive: { backgroundColor: '#28a745' },
-    statusProgress: { backgroundColor: '#f0ad4e' },
-    name: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-    yayasan: { fontSize: 13, color: '#007bff', marginTop: 3 },
-    wilayah: { fontSize: 13, color: '#555', marginTop: 3 },
-    description: { fontSize: 12, color: '#333', marginTop: 5, fontStyle: 'italic' },
-    cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 },
-    actionButton: { borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
-    actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
-    emptyText: { color: '#000', fontSize: 16, marginBottom: 10 },
-    addButton: {
-        backgroundColor: '#28a745',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-    },
-    addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    modalContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 20,
-        maxHeight: '80%',
-        position: 'relative',
-    },
-    modalCloseIcon: { position: 'absolute', top: 10, right: 10, zIndex: 10, padding: 5 },
-    modalCloseIconText: { fontSize: 18, fontWeight: 'bold', color: '#122E5F' },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#122E5F' },
-    modalSearchInput: {
-        borderWidth: 1,
-        borderColor: '#C4C4C4',
-        borderRadius: 8,
-        padding: 8,
-        marginBottom: 10,
-        fontSize: 14,
-        color: '#000',
-    },
-    modalItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    modalItemText: { fontWeight: 'bold', color: '#000' },
-    modalSubText: { color: '#555', fontSize: 12 },
-    modalSubTextSmall: { color: '#777', fontSize: 11 },
-    modalCreateButton: {
-        backgroundColor: '#0068A7',
-        paddingVertical: 12,
-        borderRadius: 8,
-        marginTop: 10,
-    },
-    modalCreateButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        textAlign: 'center',
-        fontSize: 16,
-    },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#122E5F' },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center', // ⬅️ posisikan vertikal di tengah
-        alignItems: 'center',     // ⬅️ posisikan horizontal di tengah
-        paddingHorizontal: 20,
-        minHeight: 400,           // agar tetap di tengah meski list kecil
-    },
-    emptyText: {
-        textAlign: 'center',
-        color: '#333',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    emptySubText: {
-        textAlign: 'center',
-        color: '#888',
-        fontSize: 13,
-        marginTop: 4,
-    },
-    syncContainer: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        marginBottom: 10,
-    },
-    syncButton: {
-        backgroundColor: '#0068A7',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        alignSelf: 'flex-end',
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    syncButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    }
+    card: { backgroundColor: '#ccd3e9cc', borderRadius: 10, padding: 15, marginBottom: 12 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    code: { backgroundColor: '#f8e9f8', color: '#C71585', fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+    status: { color: 'white', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, fontSize: 12 },
+    statusActive: { backgroundColor: '#4CAF50' },
+    statusProgress: { backgroundColor: '#007bff' },
+    cardBody: { marginTop: 8 },
+    name: { fontSize: 15, fontWeight: '700', color: '#0d2143' },
+    description: { fontSize: 13, color: '#333', marginTop: 2 },
+    yayasan: { fontSize: 13, color: '#666' },
+    wilayah: { fontSize: 13, color: '#666' },
+    cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 8 },
+    actionButton: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6 },
+    actionText: { color: 'white', fontWeight: '600' },
+    emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    emptyText: { fontSize: 15, color: '#333', marginBottom: 8 },
+    addButton: { backgroundColor: '#0068A7', padding: 10, borderRadius: 8 },
+    addButtonText: { color: 'white', fontWeight: '700' },
+    listContainer: { flex: 1 },
+    btnControlContainer: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 10 },
+    syncButton: { backgroundColor: '#4CAF50', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 },
+    syncButtonText: { color: 'white', fontWeight: '600' },
+    headerButton: { backgroundColor: '#0068A7', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 },
+    headerButtonText: { color: 'white', fontWeight: '600' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+    modalContainer: { backgroundColor: '#fff', width: '90%', borderRadius: 10, padding: 15, maxHeight: '80%' },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: '#0d2143', marginBottom: 10 },
+    modalSearchInput: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 10, marginBottom: 10 },
+    modalItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    modalItemText: { fontWeight: '700', color: '#0d2143' },
+    modalSubText: { fontSize: 13, color: '#333' },
+    modalSubTextSmall: { fontSize: 12, color: '#666' },
+    modalCreateButton: { backgroundColor: '#0068A7', paddingVertical: 10, borderRadius: 8, marginTop: 10 },
+    modalCreateButtonText: { textAlign: 'center', color: '#fff', fontWeight: '700' },
+    modalCloseIcon: { position: 'absolute', right: 10, top: 10 },
+    modalCloseIconText: { fontSize: 18, color: '#333' },
 });
 
 export default ConstructionReport;

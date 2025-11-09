@@ -7,14 +7,18 @@ import {
 	ScrollView,
 	useWindowDimensions,
 	ActivityIndicator,
+	TouchableOpacity,
+	SafeAreaView,
 } from 'react-native';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import moment from 'moment';
 import RenderHtml from 'react-native-render-html';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { BASE_URL, BASE_IMG_URL } from '../config/Config';
+import SkeletonCard from '../components/SkeletonCard';
 
-const NewsDetailScreen = ({ route }) => {
+const NewsDetailScreen = ({ route, navigation }) => {
 	const { token } = useContext(AuthContext);
 	const [news, setNews] = useState(null);
 	const [loading, setLoading] = useState(true);
@@ -31,8 +35,7 @@ const NewsDetailScreen = ({ route }) => {
 						Authorization: `Bearer ${token}`,
 					},
 				});
-				const data = response.data.response;
-				setNews(data);
+				setNews(response.data.response);
 			} catch (err) {
 				console.error(err);
 				setError('Gagal memuat berita. Silakan coba lagi.');
@@ -45,18 +48,13 @@ const NewsDetailScreen = ({ route }) => {
 	}, []);
 
 	if (loading) {
-		return (
-			<View style={styles.loadingContainer}>
-				<ActivityIndicator size="large" color="#ffffff" />
-				<Text style={{ color: '#ffffff', marginTop: 10 }}>Memuat berita...</Text>
-			</View>
-		);
+		return <SkeletonCard count={5} />;
 	}
 
 	if (error) {
 		return (
 			<View style={styles.loadingContainer}>
-				<Text style={{ color: '#ffffff', textAlign: 'center' }}>{error}</Text>
+				<Text style={{ color: '#0d2143', textAlign: 'center' }}>{error}</Text>
 			</View>
 		);
 	}
@@ -64,7 +62,7 @@ const NewsDetailScreen = ({ route }) => {
 	if (!news) {
 		return (
 			<View style={styles.loadingContainer}>
-				<Text style={{ color: '#ffffff' }}>Berita tidak ditemukan.</Text>
+				<Text style={{ color: '#0d2143' }}>Berita tidak ditemukan.</Text>
 			</View>
 		);
 	}
@@ -73,57 +71,89 @@ const NewsDetailScreen = ({ route }) => {
 
 	return (
 		<View style={styles.container}>
+			{/* Header */}
 			<View style={styles.header}>
-				<Image
-					style={styles.headerIcon}
-					source={require('../assets/Icons/title.png')}
-				/>
-				<Text style={styles.headerTitle}>Buletin Berita</Text>
+				<TouchableOpacity
+					onPress={() => navigation.goBack()}
+					style={styles.backButton}
+				>
+					<Icon name="arrow-back-outline" size={24} color="#000" />
+				</TouchableOpacity>
+				<Text style={styles.headerTitle}>Detail Berita</Text>
 			</View>
 
-			<Text style={styles.subTitle}>Baca Berita</Text>
+			{/* Konten berita */}
+			<SafeAreaView style={styles.contentContainer}>
+				<ScrollView showsVerticalScrollIndicator={false}>
+					<View style={styles.card}>
+						{/* Gambar utama dengan title di atasnya */}
+						<View style={styles.imageWrapper}>
+							<View style={styles.overlay}>
+								<Text style={styles.imageTitle}>{news.title}</Text>
+							</View>
+							{/* <Image
+								style={styles.cardImage}
+								source={{
+									uri: news.thumbnail
+										? `${BASE_IMG_URL}/${news.thumbnail}`
+										: `https://picsum.photos/400/250?random=1`,
+								}}
+							/> */}
+							<Image
+								style={styles.cardImage}
+								source={{
+									uri: news.thumbnail
+										? `https://picsum.photos/400/250?random=1`
+										: `https://picsum.photos/400/250?random=1`,
+								}}
+							/>
+							<View style={styles.overlay}>
+								<Text style={styles.imageTitle}>{news.title}</Text>
+							</View>
+						</View>
 
-			<ScrollView
-				style={styles.contentContainer}
-				showsVerticalScrollIndicator={false}
-			>
-				{/* Info Tanggal dan Penulis */}
-				<View style={styles.metaInfo}>
-					<Text style={styles.dateText}>
-						{moment(news.date, 'YYYY-MM-DD').format('DD MMMM YYYY')}
-					</Text>
-					<Text style={styles.authorText}>Oleh : Admin</Text>
-				</View>
+						{/* Meta info */}
+						<View style={styles.cardContent}>
+							<View style={styles.cardMeta}>
+								<Text style={styles.cardDate}>
+									{moment(news.date, 'YYYY-MM-DD').format('DD MMMM YYYY')}
+								</Text>
+								<Text style={styles.cardAuthor}>Admin</Text>
+							</View>
 
-				{/* Judul */}
-				<Text style={styles.title}>{news.title}</Text>
-
-				{/* Gambar Utama */}
-				{news.thumbnail ? (
-					<Image
-						style={styles.image}
-						source={{ uri: `${BASE_IMG_URL}/${news.thumbnail}` }}
-					/>
-				) : (
-					<Image
-						style={styles.image}
-						source={require('../assets/Icons/kamera.png')}
-					/>
-				)}
-
-				{/* Konten HTML */}
-				<View style={styles.descContainer}>
-					<RenderHtml
-						contentWidth={width}
-						source={source}
-						tagsStyles={{
-							p: { fontSize: 15, color: '#333', lineHeight: 22, textAlign: 'justify' },
-							h2: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
-							strong: { fontWeight: 'bold' },
-						}}
-					/>
-				</View>
-			</ScrollView>
+							{/* Konten berita (HTML) */}
+							<View style={styles.cardDesc}>
+								<RenderHtml
+									contentWidth={width - 60}
+									source={source}
+									tagsStyles={{
+										p: {
+											fontSize: 15,
+											color: '#222',
+											lineHeight: 24,
+											marginBottom: 10,
+											textAlign: 'justify',
+										},
+										h2: {
+											fontSize: 18,
+											fontWeight: '700',
+											color: '#0d2143',
+											marginVertical: 8,
+										},
+										h3: {
+											fontSize: 16,
+											fontWeight: '600',
+											color: '#333',
+											marginVertical: 6,
+										},
+										strong: { fontWeight: 'bold' },
+									}}
+								/>
+							</View>
+						</View>
+					</View>
+				</ScrollView>
+			</SafeAreaView>
 		</View>
 	);
 };
@@ -131,75 +161,92 @@ const NewsDetailScreen = ({ route }) => {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		padding: 15,
-		backgroundColor: '#122E5F',
+		backgroundColor: '#fff',
 	},
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
+		paddingHorizontal: 15,
+		paddingVertical: 12,
 		borderBottomWidth: 1,
-		borderBottomColor: '#adbcb1',
-		paddingBottom: 5,
+		borderBottomColor: '#eee',
+		backgroundColor: '#fff',
 	},
-	headerIcon: {
-		width: 35,
-		height: 35,
-		tintColor: '#ffffff',
-		marginRight: 8,
+	backButton: {
+		padding: 6,
 	},
 	headerTitle: {
-		fontWeight: 'bold',
-		fontSize: 28,
-		color: '#ffffff',
-	},
-	subTitle: {
-		fontSize: 18,
-		color: '#ffffff',
-		fontWeight: '500',
-		marginTop: 10,
-		marginBottom: 15,
+		fontSize: 20,
+		fontWeight: '700',
+		color: '#0d2143',
+		marginLeft: 10,
 	},
 	contentContainer: {
-		backgroundColor: '#ffffffcc',
-		borderRadius: 10,
-		padding: 12,
+		flex: 1,
+		padding: 15,
+		backgroundColor: '#fff',
 	},
-	metaInfo: {
+	card: {
+		backgroundColor: '#fff',
+		borderRadius: 12,
+		padding: 0,
+		shadowColor: '#000',
+		shadowOpacity: 0.08,
+		shadowRadius: 4,
+		elevation: 2,
+	},
+	imageWrapper: {
+		position: 'relative',
+	},
+	cardImage: {
+		width: '100%',
+		height: 220,
+		borderTopLeftRadius: 12,
+		borderTopRightRadius: 12,
+		resizeMode: 'cover',
+	},
+	overlay: {
+		position: 'absolute',
+		bottom: 0,
+		left: 0,
+		right: 0,
+		padding: 10,
+		backgroundColor: 'rgba(0,0,0,0.4)',
+		borderBottomLeftRadius: 12,
+		borderBottomRightRadius: 12,
+	},
+	imageTitle: {
+		fontSize: 18,
+		fontWeight: '700',
+		color: '#fff',
+		lineHeight: 24,
+	},
+	cardContent: {
+		paddingHorizontal: 15,
+		paddingVertical: 12,
+	},
+	cardMeta: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		marginBottom: 10,
 	},
-	dateText: {
-		fontSize: 14,
+	cardDate: {
+		fontSize: 13,
 		color: '#6c757d',
 	},
-	authorText: {
-		fontSize: 14,
-		color: '#00aeef',
-		fontWeight: 'bold',
+	cardAuthor: {
+		fontSize: 13,
+		color: '#007bff',
+		fontWeight: '600',
 	},
-	title: {
-		fontSize: 22,
-		fontWeight: 'bold',
-		color: '#222',
-		marginBottom: 12,
-		lineHeight: 30,
-	},
-	image: {
-		width: '100%',
-		height: 250,
-		borderRadius: 8,
-		marginBottom: 15,
-		resizeMode: 'cover',
-	},
-	descContainer: {
-		paddingBottom: 20,
+	cardDesc: {
+		marginTop: 6,
 	},
 	loadingContainer: {
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
-		backgroundColor: '#122E5F',
+		backgroundColor: '#fff',
 	},
 });
 

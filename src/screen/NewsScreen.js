@@ -8,7 +8,6 @@ import {
     SafeAreaView,
     TouchableOpacity,
     RefreshControl,
-    ActivityIndicator,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
@@ -59,6 +58,16 @@ const NewsScreen = ({ navigation }) => {
         getNews();
     };
 
+    const handleFilter = () => {
+        console.log('Filter clicked');
+        // TODO: implement your filter modal or dropdown
+    };
+
+    const handleSort = () => {
+        console.log('Sort clicked');
+        // TODO: implement your sort logic or modal
+    };
+
     const renderItem = ({ item }) => (
         <TouchableOpacity
             style={styles.card}
@@ -69,7 +78,8 @@ const NewsScreen = ({ navigation }) => {
             {item.thumbnail ? (
                 <Image
                     style={styles.cardImage}
-                    source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
+                    // source={{ uri: `${BASE_IMG_URL}/${item.thumbnail}` }}
+                    source={{ uri: `https://picsum.photos/300/200?random=1` }}
                 />
             ) : (
                 <Image
@@ -93,22 +103,36 @@ const NewsScreen = ({ navigation }) => {
         </TouchableOpacity>
     );
 
-
     if (loading) {
         return <SkeletonCard count={5} />;
     }
 
     return (
         <View style={styles.container}>
+            {/* ===== HEADER ===== */}
             <View style={styles.header}>
                 <View style={styles.headerLeftGroup}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Icon name="arrow-back-outline" size={24} color="#0d2143" />
                     </TouchableOpacity>
-                        
                     <Text style={styles.headerTitle}>Buletin Berita</Text>
                 </View>
             </View>
+
+            {/* ===== FILTER & SORT BAR ===== */}
+            <View style={styles.filterSortBar}>
+                <TouchableOpacity style={styles.filterButton} onPress={handleFilter}>
+                    <Icon name="funnel-outline" size={20} color="#0d2143" />
+                    <Text style={styles.filterText}>Filter</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.filterButton} onPress={handleSort}>
+                    <Icon name="swap-vertical-outline" size={20} color="#0d2143" />
+                    <Text style={styles.filterText}>Urutkan</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* ===== LIST ===== */}
             <SafeAreaView style={styles.listContainer}>
                 <FlatList
                     data={news}
@@ -147,27 +171,37 @@ const styles = StyleSheet.create({
     headerLeftGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6, // jarak kecil antara icon & title
+        gap: 6,
     },
     backButton: {
         padding: 4,
-    },
-    backIcon: {
-        fontSize: 22,
-        color: '#0d2143',
-        fontWeight: 'bold',
-    },
-    btnControlContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 4,
-        paddingHorizontal: 4,
     },
     headerTitle: {
         fontSize: 22,
         fontWeight: '700',
         color: '#0d2143',
+    },
+    /** FILTER & SORT BAR */
+    filterSortBar: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 10,
+        marginBottom: 8,
+        gap: 10,
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e6f0ff',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+    },
+    filterText: {
+        marginLeft: 6,
+        color: '#0d2143',
+        fontWeight: '600',
+        fontSize: 14,
     },
     listContainer: {
         flex: 1,
@@ -182,6 +216,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 180,
         resizeMode: 'cover',
+        borderRadius: 6,
     },
     cardContent: {
         paddingVertical: 10,
@@ -209,15 +244,9 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         textAlign: 'center',
-        color: '#fff',
+        color: '#666',
         fontStyle: 'italic',
         marginTop: 20,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#122E5F',
     },
 });
 

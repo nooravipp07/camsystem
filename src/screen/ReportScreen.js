@@ -89,19 +89,6 @@ const ReportScreen = ({ navigation }) => {
                         <Text style={styles.label}>Waktu:</Text>
                         <Text style={styles.value}>{item.hour?.substring(0, 5)}</Text>
                     </View>
-                    <View style={styles.imageWrapper}>
-                        {image ? (
-                            <Image
-                                source={{ uri: `${BASE_IMG_URL}${image.file}` }}
-                                style={styles.image}
-                            />
-                        ) : (
-                            <Image
-                                source={require('../assets/Icons/kamera.png')}
-                                style={styles.image}
-                            />
-                        )}
-                    </View>
                     <Text style={styles.description}>
                         {item.desc?.substring(0, 120)}...
                     </Text>
@@ -186,7 +173,7 @@ const styles = StyleSheet.create({
     },
     headerButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
     listContainer: { flex: 1, marginTop: 15 },
-    card: { backgroundColor: '#ffffffcc', borderRadius: 10, padding: 15, marginBottom: 12 },
+    card: { backgroundColor: '#ccd3e9cc', borderRadius: 10, padding: 15, marginBottom: 12 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     code: { backgroundColor: '#e6f0ff', color: '#0068A7', fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, fontSize: 13 },
     status: { backgroundColor: '#17a2b8', color: '#fff', fontWeight: 'bold', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, fontSize: 12 },

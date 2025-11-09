@@ -147,16 +147,12 @@ function MainNav() {
       <Tab.Navigator
         screenOptions={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? '';
-
-          // 📋 Semua screen yang ingin disembunyikan per navigator
           const tabHiddenMap = {
             'Progres SPPG': ['ProgressForm', 'GeneralInformationForm'],
-            'Pelaporan': ['DetailLaporan', 'CreateLaporan'],
+            'Pelaporan': ['DetailLaporan', 'CreateLaporan', 'ReportFormStep3', 'ReportFormStep2', 'ReportFormStep1', 'ReportDetailScreen'],
             'Buletin Berita': ['DetailBerita'],
-            // tambahkan sesuai kebutuhan nav lainnya
           };
-
-          // 🎯 Cek apakah screen saat ini termasuk dalam daftar hidden
+          
           const isTabHidden =
             tabHiddenMap[route.name]?.includes(routeName);
 
