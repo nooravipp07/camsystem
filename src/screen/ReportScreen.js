@@ -67,7 +67,7 @@ const ReportScreen = ({ navigation }) => {
             ) || null;
 
         return (
-            <TouchableOpacity
+            <View
                 style={styles.card}
                 onPress={() =>
                     navigation.navigate('ReportDetailScreen', { reportId: item.id })
@@ -104,7 +104,7 @@ const ReportScreen = ({ navigation }) => {
                         <Text style={styles.actionText}>👁️ Lihat Detail</Text>
                     </TouchableOpacity>
                 </View>
-            </TouchableOpacity>
+            </View>
         );
     };
 

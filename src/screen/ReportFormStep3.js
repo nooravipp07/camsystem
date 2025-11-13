@@ -22,241 +22,252 @@ import { BASE_URL } from '../config/Config';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 function ReportFormStep3({ navigation }) {
-  const [imageCamera, setImageCamera] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [lat, setLat] = useState('');
-  const [long, setLong] = useState('');
-  const { token, userInfo } = useContext(AuthContext);
-  const { formData, updateFormData } = useContext(DataContext);
+	const [imageCamera, setImageCamera] = useState([]);
+	const [files, setFiles] = useState([]);
+	const [lat, setLat] = useState('');
+	const [long, setLong] = useState('');
+	const { token, userInfo } = useContext(AuthContext);
+	const { formData, updateFormData } = useContext(DataContext);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isModalCancelVisible, setIsModalCancelVisible] = useState(false);
-  const [isModalSuccessVisible, setIsModalSuccessVisible] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [isModalVisible, setIsModalVisible] = useState(false);
+	const [isModalCancelVisible, setIsModalCancelVisible] = useState(false);
+	const [isModalSuccessVisible, setIsModalSuccessVisible] = useState(false);
 
-  useEffect(() => {
-    getGeolocation();
-  }, []);
+	useEffect(() => {
+		getGeolocation();
+	}, []);
 
-  const cleanFormData = () => {
-    const fields = ['date','hour','title','province_id','regency_id','district_id','village_id','desc','keterangan','file','user_id','kodam_id'];
-    fields.forEach(field => updateFormData({ [field]: field === 'file' ? [] : "" }));
-  };
+	const cleanFormData = () => {
+		const fields = ['date','hour','title','province_id','regency_id','district_id','village_id','desc','keterangan','file','user_id','kodam_id'];
+		fields.forEach(field => updateFormData({ [field]: field === 'file' ? [] : "" }));
+	};
 
-  const deleteImage = (index) => {
-    const updatedImages = [...imageCamera];
-    updatedImages.splice(index, 1);
-    setImageCamera(updatedImages);
-  };
-    
-  const deleteFile = (index) => {
-    const updatedFiles = [...files];
-    updatedFiles.splice(index, 1);
-    setFiles(updatedFiles);
-  };
+	const deleteImage = (index) => {
+		const updatedImages = [...imageCamera];
+		updatedImages.splice(index, 1);
+		setImageCamera(updatedImages);
+	};
+		
+	const deleteFile = (index) => {
+		const updatedFiles = [...files];
+		updatedFiles.splice(index, 1);
+		setFiles(updatedFiles);
+	};
 
-  const captureImage = async () => {
-    try {
-      check(Platform.OS === 'android' ? PERMISSIONS.ANDROID.CAMERA : PERMISSIONS.IOS.CAMERA)
-      .then((result) => {
-        if(result === RESULTS.GRANTED) {
-          launchCamera({ mediaType: 'photo', quality: 0.5, multiple: true }, (response) => {
-            if (response.didCancel) return;
-            if (response.errorCode) {
-              alert(response.errorMessage || 'Error saat membuka kamera');
-              return;
-            }
-            const data = response.assets;
-            if(data[0].fileSize < 2000000){
-              setImageCamera(prev => prev.concat(data));
-            } else {
-              alert('Foto / Gambar harus <= 2 MB');
-            }
-          });
-        }
-      }).catch(console.log);
-    } catch(e) { console.log(e); }
-  };
+	const captureImage = async () => {
+		try {
+		check(Platform.OS === 'android' ? PERMISSIONS.ANDROID.CAMERA : PERMISSIONS.IOS.CAMERA)
+		.then((result) => {
+			if(result === RESULTS.GRANTED) {
+			launchCamera({ mediaType: 'photo', quality: 0.5, multiple: true }, (response) => {
+				if (response.didCancel) return;
+				if (response.errorCode) {
+				alert(response.errorMessage || 'Error saat membuka kamera');
+				return;
+				}
+				const data = response.assets;
+				if(data[0].fileSize < 2000000){
+				setImageCamera(prev => prev.concat(data));
+				} else {
+				alert('Foto / Gambar harus <= 2 MB');
+				}
+			});
+			}
+		}).catch(console.log);
+		} catch(e) { console.log(e); }
+	};
 
-  const openGalery = () => {
-    launchImageLibrary({ mediaType: 'photo', quality: 0.5, multiple: true }, (response) => {
-      if (response.didCancel) return;
-      if (response.errorCode) {
-        alert(response.errorMessage || 'Error saat membuka galeri');
-        return;
-      }
-      const data = response.assets;
-      if(data[0].fileSize < 2000000){
-        setImageCamera(prev => prev.concat(data));
-      } else {
-        alert('Foto / Gambar harus <= 2 MB');
-      }
-    });
-  };
+	const openGalery = () => {
+		launchImageLibrary({ mediaType: 'photo', quality: 0.5, multiple: true }, (response) => {
+		if (response.didCancel) return;
+		if (response.errorCode) {
+			alert(response.errorMessage || 'Error saat membuka galeri');
+			return;
+		}
+		const data = response.assets;
+		if(data[0].fileSize < 2000000){
+			setImageCamera(prev => prev.concat(data));
+		} else {
+			alert('Foto / Gambar harus <= 2 MB');
+		}
+		});
+	};
 
-  const pickDocument = async () => {
-    try {
-      const res = await DocumentPicker.pick({ type: [DocumentPicker.types.allFiles], allowMultiSelection: true });
-      setFiles(prev => prev.concat(res));
-    } catch(e) { console.log(e); }
-  };
+	const pickDocument = async () => {
+		try {
+		const res = await DocumentPicker.pick({ type: [DocumentPicker.types.allFiles], allowMultiSelection: true });
+		setFiles(prev => prev.concat(res));
+		} catch(e) { console.log(e); }
+	};
 
-  const getGeolocation = async () => {
-    try {
-      check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION).then(result => {
-        if(result === RESULTS.GRANTED) {
-          Geolocation.getCurrentPosition(info => {
-            setLat(info.coords.latitude);
-            setLong(info.coords.longitude);
-          });
-        }
-      }).catch(console.log);
-    } catch(e) { console.log(e); }
-  };
+	const getGeolocation = async () => {
+		try {
+		check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION).then(result => {
+			if(result === RESULTS.GRANTED) {
+			Geolocation.getCurrentPosition(info => {
+				setLat(info.coords.latitude);
+				setLong(info.coords.longitude);
+			});
+			}
+		}).catch(console.log);
+		} catch(e) { console.log(e); }
+	};
 
-  const handlePressSubmit = () => { 
-    if(imageCamera.length === 0) alert("Data Foto Harus di Isi !");
-    else setIsModalVisible(true);
-  };
+	const handlePressSubmit = () => { 
+		if(imageCamera.length === 0) alert("Data Foto Harus di Isi !");
+		else setIsModalVisible(true);
+	};
 
-  const handleCancelConfirm = () => {
-    cleanFormData();
-    navigation.navigate('ReportScreen');
-  };
+	const handleCancelConfirm = () => {
+		cleanFormData();
+		navigation.navigate('ReportScreen');
+	};
 
-  const handleConfirm = async () => {
-    setIsLoading(true);
-    try {
-      updateFormData({ user_id: userInfo.id, kodam_id: userInfo.id });
-      let uploadData = new FormData();
-      Object.keys(formData).forEach(key => { if(key !== 'file') uploadData.append(key, formData[key]); });
-      uploadData.append("lat", lat);
-      uploadData.append("long", long);
+	const handleConfirm = async () => {
+		setIsLoading(true);
+		try {
+		updateFormData({ user_id: userInfo.id, kodam_id: userInfo.id });
+		let uploadData = new FormData();
+		Object.keys(formData).forEach(key => { if(key !== 'file') uploadData.append(key, formData[key]); });
+		uploadData.append("lat", lat);
+		uploadData.append("long", long);
 
-      [...files.map(f => ({ uri: f.uri, type: f.type, name: f.name })), 
-       ...imageCamera.map(img => ({ uri: img.uri, type: img.type, name: img.fileName }))].forEach(file => uploadData.append("file[]", file));
+		[...files.map(f => ({ uri: f.uri, type: f.type, name: f.name })), 
+		...imageCamera.map(img => ({ uri: img.uri, type: img.type, name: img.fileName }))].forEach(file => uploadData.append("file[]", file));
 
-      const response = await axios.post(`${BASE_URL}/reports/insert`, uploadData, { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` } });
+		const response = await axios.post(
+			`${BASE_URL}/reports/insert`, 
+			uploadData, 
+			{
+				headers: {
+					"Content-Type": "multipart/form-data", 
+					Authorization: `Bearer ${token}`,
+					timeout: 0, // no timeout
+					maxContentLength: Infinity,
+					maxBodyLength: Infinity, // penting untuk upload file besar 
+			} 
+		});
 
-      if(response.status === 200){
-        setIsLoading(false);
-        cleanFormData();
-        setIsModalVisible(false);
-        setIsModalSuccessVisible(true);
-        setTimeout(() => { setIsModalSuccessVisible(false); navigation.navigate('ReportScreen'); }, 3000);
-      } else {
-        setIsModalVisible(false);
-        alert('Gagal kirim Laporan');
-      }
-    } catch(e) {
-      setIsLoading(false);
-      setIsModalVisible(false);
-      alert('Gagal kirim Laporan');
-      console.log(e);
-    }
-  };
+		if(response.status === 200){
+			setIsLoading(false);
+			cleanFormData();
+			setIsModalVisible(false);
+			setIsModalSuccessVisible(true);
+			setTimeout(() => { setIsModalSuccessVisible(false); navigation.navigate('ReportScreen'); }, 3000);
+		} else {
+			setIsModalVisible(false);
+			alert('Gagal kirim Laporan');
+		}
+		} catch(e) {
+			setIsLoading(false);
+			setIsModalVisible(false);
+			alert('Gagal kirim Laporan');
+			console.log(e);
+		}
+	};
 
-  const ConfirmationModal = ({ visible, onCancel, onConfirm }) => (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalText}>Apakah Anda Ingin Menyelesaikan Laporan ?</Text>
-          {isLoading && <Loading />}
-          <TouchableOpacity style={styles.modalBtn} onPress={onConfirm}>
-            <Text style={styles.modalBtnText}>KIRIM</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel}>
-            <Text style={styles.modalCancelText}>KEMBALI</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+	const ConfirmationModal = ({ visible, onCancel, onConfirm }) => (
+		<Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
+		<View style={styles.modalContainer}>
+			<View style={styles.modalContent}>
+			<Text style={styles.modalText}>Apakah Anda Ingin Menyelesaikan Laporan ?</Text>
+			{isLoading && <Loading />}
+			<TouchableOpacity style={styles.modalBtn} onPress={onConfirm}>
+				<Text style={styles.modalBtnText}>KIRIM</Text>
+			</TouchableOpacity>
+			<TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel}>
+				<Text style={styles.modalCancelText}>KEMBALI</Text>
+			</TouchableOpacity>
+			</View>
+		</View>
+		</Modal>
+	);
 
-  const CancelModal = ({ visible, onCancel, onConfirm }) => (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalText}>Apakah Anda Yakin Untuk Membatalkan Laporan ?</Text>
-          <TouchableOpacity style={styles.modalBtn} onPress={handleCancelConfirm}>
-            <Text style={styles.modalBtnText}>BATALKAN PELAPORAN</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.modalCancelBtn} onPress={onConfirm}>
-            <Text style={styles.modalCancelText}>KEMBALI</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+	const CancelModal = ({ visible, onCancel, onConfirm }) => (
+		<Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
+		<View style={styles.modalContainer}>
+			<View style={styles.modalContent}>
+			<Text style={styles.modalText}>Apakah Anda Yakin Untuk Membatalkan Laporan ?</Text>
+			<TouchableOpacity style={styles.modalBtn} onPress={handleCancelConfirm}>
+				<Text style={styles.modalBtnText}>BATALKAN PELAPORAN</Text>
+			</TouchableOpacity>
+			<TouchableOpacity style={styles.modalCancelBtn} onPress={onConfirm}>
+				<Text style={styles.modalCancelText}>KEMBALI</Text>
+			</TouchableOpacity>
+			</View>
+		</View>
+		</Modal>
+	);
 
-  const SuccessModal = ({ visible }) => (
-    <Modal visible={visible} animationType="fade" transparent>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalText}>Laporan Berhasil di Kirim !</Text>
-        </View>
-      </View>
-    </Modal>
-  );
+	const SuccessModal = ({ visible }) => (
+		<Modal visible={visible} animationType="fade" transparent>
+		<View style={styles.modalContainer}>
+			<View style={styles.modalContent}>
+			<Text style={styles.modalText}>Laporan Berhasil di Kirim !</Text>
+			</View>
+		</View>
+		</Modal>
+	);
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back-outline" size={26} color="#0d2143" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Laporan Progres SPPG</Text>
-      </View>
+	return (
+		<SafeAreaView style={styles.container}>
+		<View style={styles.header}>
+			<TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+			<Icon name="arrow-back-outline" size={26} color="#0d2143" />
+			</TouchableOpacity>
+			<Text style={styles.headerTitle}>Laporan Progres SPPG</Text>
+		</View>
 
-      <Text style={styles.inputLabel}>FOTO, VIDEO, DOKUMEN</Text>
+		<Text style={styles.inputLabel}>FOTO, VIDEO, DOKUMEN</Text>
 
-      <ScrollView contentContainerStyle={{paddingBottom: 20}}>
-        <TouchableOpacity onPress={captureImage} style={styles.btnPicker}>
-          <Text style={styles.buttonText}>AMBIL FOTO</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={openGalery} style={styles.btnPicker}>
-          <Text style={styles.buttonText}>AMBIL DATA DARI PONSEL</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={pickDocument} style={styles.btnPicker}>
-          <Text style={styles.buttonText}>AMBIL DATA FILE</Text>
-        </TouchableOpacity>
+		<ScrollView contentContainerStyle={{paddingBottom: 20}}>
+			<TouchableOpacity onPress={captureImage} style={styles.btnPicker}>
+			<Text style={styles.buttonText}>AMBIL FOTO</Text>
+			</TouchableOpacity>
+			<TouchableOpacity onPress={openGalery} style={styles.btnPicker}>
+			<Text style={styles.buttonText}>AMBIL DATA DARI PONSEL</Text>
+			</TouchableOpacity>
+			<TouchableOpacity onPress={pickDocument} style={styles.btnPicker}>
+			<Text style={styles.buttonText}>AMBIL DATA FILE</Text>
+			</TouchableOpacity>
 
-        <Text style={styles.inputLabel}>LAMPIRAN FOTO :</Text>
-        <ScrollView horizontal style={styles.imgContainer}>
-          {imageCamera.map((image, index) => (
-            <TouchableOpacity key={index.toString()} onPress={() => deleteImage(index)}>
-              <Image source={{ uri: image.uri }} style={styles.profileImage} />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+			<Text style={styles.inputLabel}>LAMPIRAN FOTO :</Text>
+			<ScrollView horizontal style={styles.imgContainer}>
+			{imageCamera.map((image, index) => (
+				<TouchableOpacity key={index.toString()} onPress={() => deleteImage(index)}>
+				<Image source={{ uri: image.uri }} style={styles.profileImage} />
+				</TouchableOpacity>
+			))}
+			</ScrollView>
 
-        <Text style={styles.inputLabel}>LAMPIRAN DOKUMEN :</Text>
-        <View>
-          {files.map((file, index) => (
-            <TouchableOpacity key={index.toString()} onPress={() => deleteFile(index)}>
-              <Text style={{marginVertical: 4}}>{file.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+			<Text style={styles.inputLabel}>LAMPIRAN DOKUMEN :</Text>
+			<View>
+			{files.map((file, index) => (
+				<TouchableOpacity key={index.toString()} onPress={() => deleteFile(index)}>
+				<Text style={{marginVertical: 4}}>{file.name}</Text>
+				</TouchableOpacity>
+			))}
+			</View>
+		</ScrollView>
 
-      <ConfirmationModal visible={isModalVisible} onCancel={() => setIsModalVisible(false)} onConfirm={handleConfirm} />
-      <CancelModal visible={isModalCancelVisible} onCancel={() => setIsModalCancelVisible(false)} onConfirm={() => setIsModalCancelVisible(false)} />
-      <SuccessModal visible={isModalSuccessVisible} />
+		<ConfirmationModal visible={isModalVisible} onCancel={() => setIsModalVisible(false)} onConfirm={handleConfirm} />
+		<CancelModal visible={isModalCancelVisible} onCancel={() => setIsModalCancelVisible(false)} onConfirm={() => setIsModalCancelVisible(false)} />
+		<SuccessModal visible={isModalSuccessVisible} />
 
-      <View style={styles.btnContainer}>
-        <TouchableOpacity style={styles.btn} onPress={() => setIsModalCancelVisible(true)}>
-          <Text style={styles.buttonText}>BATAL</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('ReportFormStep2')}>
-          <Text style={styles.buttonText}>KEMBALI</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={handlePressSubmit}>
-          <Text style={styles.buttonText}>KIRIM</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
+		<View style={styles.btnContainer}>
+			<TouchableOpacity style={styles.btn} onPress={() => setIsModalCancelVisible(true)}>
+			<Text style={styles.buttonText}>BATAL</Text>
+			</TouchableOpacity>
+			<TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('ReportFormStep2')}>
+			<Text style={styles.buttonText}>KEMBALI</Text>
+			</TouchableOpacity>
+			<TouchableOpacity style={styles.btn} onPress={handlePressSubmit}>
+			<Text style={styles.buttonText}>KIRIM</Text>
+			</TouchableOpacity>
+		</View>
+		</SafeAreaView>
+	);
 }
 
 const styles = StyleSheet.create({

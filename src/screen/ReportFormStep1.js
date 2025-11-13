@@ -64,6 +64,7 @@ const ReportFormStep1 = ({ navigation }) => {
 
 	useEffect(() => {
 		if (user) autoFillUserLocation();
+		console.log(user)
 	}, [userInfo]);
 
 	const autoFillUserLocation = () => {
@@ -224,7 +225,7 @@ const ReportFormStep1 = ({ navigation }) => {
 							{modalType === 'kel' && 'Pilih Kelurahan/Desa'}
 						</Text>
 						{modalLoading ? (
-							<ActivityIndicator size="large" color="#00aeef" style={{ marginVertical: 30 }} />
+							<ActivityIndicator size="large" color="#0d2143" style={{ marginVertical: 30 }} />
 						) : (
 							<FlatList
 								data={currentList()}
@@ -295,7 +296,7 @@ const styles = StyleSheet.create({
 	modalItem: { paddingVertical: 12, borderBottomWidth: 1, borderColor: '#eee' },
 	modalItemText: { fontSize: 16, color: '#333' },
 	modalClose: { marginTop: 16, alignItems: 'center' },
-	modalCloseText: { color: '#00aeef', fontWeight: '600' },
+	modalCloseText: { color: '#0d2143', fontWeight: '600' },
 });
 
 export default ReportFormStep1;
